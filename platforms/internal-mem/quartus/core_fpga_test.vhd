@@ -29,7 +29,8 @@ architecture behaviour of core_fpga_test is
 	signal pll_clk_wb     : std_logic;
 	signal pll_locked     : std_logic;
 
-	signal core_reset     : std_logic;
+	-- Mantém core em reset até o PLL estar travado
+	signal core_reset : std_logic;
 
 begin
 
@@ -43,15 +44,12 @@ begin
       locked   => pll_locked
     );
 
-	-- Mantém o core em reset enquanto o PLL não está locked.
-	-- Importante para inicializar o Booth multiplier e o NR divider em S_IDLE
-	-- (sem isso, podem iniciar num estado inválido com busy=1 permanente).
 	core_reset <= not pll_locked;
 
 	CORE : entity work.rv32im_pipeline_core
 		port map (
 			clk          => pll_clk_idexmem,
-			reset 		=> core_reset,
+			reset        => core_reset,
 
 			rom_addr => rom_addr,
 			rom_rden => rom_rden,
@@ -71,6 +69,8 @@ begin
       address => rom_addr(14 downto 2),
       clock   => pll_clk_if,
       rden    => rom_rden,
+      wren    => '0',
+      data    => (others => '0'),
       q       => rom_data
     );
 
