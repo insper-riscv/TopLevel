@@ -23,6 +23,8 @@ architecture behaviour of rv32i3stage_core_sim_test is
 	signal ram_wdata : std_logic_vector(31 downto 0);
 	signal ram_rdata : std_logic_vector(31 downto 0);
 	signal ram_en : std_logic;
+	signal ram_re_gated : std_logic;
+	signal ram_we_gated : std_logic;
 	signal ram_wren : std_logic;
 	signal ram_rden : std_logic;
 	signal ram_byteena : std_logic_vector(3 downto 0);
@@ -33,6 +35,10 @@ architecture behaviour of rv32i3stage_core_sim_test is
 	signal pll_locked     : std_logic;
 
 begin
+
+	-- Sinais intermediarios para port maps (VHDL-93 nao aceita expressoes em port maps)
+	ram_re_gated <= ram_rden and ram_en;
+	ram_we_gated <= ram_wren and ram_en;
 
 	pll_inst : entity work.clk_gen_3way
     port map (
@@ -82,8 +88,8 @@ begin
 			mask 		=> ram_byteena,
 			clk		 	=> pll_clk_idexmem,
 			data_in 	=> ram_wdata,
-			reRAM 		=> ram_rden and ram_en,
-			weRAM 		=> ram_wren and ram_en,
+			reRAM 		=> ram_re_gated,
+			weRAM 		=> ram_we_gated,
 			eRAM 		=> ram_en,
 			data_out 	=> ram_rdata
 	);
