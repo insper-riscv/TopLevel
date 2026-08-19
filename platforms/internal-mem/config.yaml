@@ -1,0 +1,71 @@
+# Configuration for the RISC-V test build/run pipeline.
+#
+# The "real" side is wired to ../RV32IM/tests/FPGA/core/quartus
+# (core_fpga_test.qpf) — the only working core + Quartus project on
+# this workstation. Lines still marked "<<< ADJUST" depend on things
+# that vary per machine/runner (which JTAG cable, which self-hosted
+# runner labels) — see README.md.
+
+toolchain:
+  # riscv-collab/riscv-gnu-toolchain (elf/newlib variant). CI always
+  # pulls the latest nightly rather than pinning a tag, since the
+  # project has no "stable" release and this is the same toolchain
+  # used in production. See README.md.
+  gcc: riscv32-unknown-elf-gcc
+  objcopy: riscv32-unknown-elf-objcopy
+
+isa:
+  base: i                    # always implied, never written in a test's header
+  default_ext: ""            # no "// RV32_EXT:" header -> plain rv32i
+  # Canonical order standard RISC-V extension letters get sorted into
+  # before being appended to the base ISA string, so "// RV32_EXT: A,M"
+  # and "// RV32_EXT: M,A" both normalize to rv32ima.
+  canonical_order: "MAFDQLCBJTPVNH"
+
+memory:
+  # rv32im_pipeline_core is Harvard: rom_addr and ram_addr are two
+  # independent buses, each its own flat space starting at 0x0 — this
+  # is NOT a unified memory map. A load/store at 0x0 always hits RAM
+  # word 0, regardless of where the PC is in ROM.
+  rom_base: 0x00000000
+  rom_words: 8192       # ROM1PORT: numwords_a=8192, widthad_a=13 (see rom1port.vhd)
+  ram_base: 0x00000000
+  ram_words: 4096        # RAM1PORT: numwords_a=4096, widthad_a=12 (see ram1port.vhd)
+  # Last word of RAM, reserved for the PASS/FAIL mailbox (see
+  # tools/riscv_build/include/rv32_test.h). Must stay in sync with
+  # link.ld's RAM length below.
+  mailbox_addr: 0x00003FFC
+
+paths:
+  include_dir: tools/riscv_build/include
+  crt0: tools/riscv_build/crt0.S
+  linker_script: tools/riscv_build/link.ld
+  build_dir: build
+  tests_real_dir: tests/c/real
+  tests_sim_dir: tests/c/sim
+  golden_dir: tests/c/real/golden
+
+quartus:
+  # Points at RV32IM's real project (sibling repo, not nested under
+  # this folder) rather than a project living inside test/.
+  project_dir: ../RV32IM/tests/FPGA/core/quartus
+  project_name: core_fpga_test                     # core_fpga_test.qpf/.qsf
+  sof_file: output_files/core_fpga_test.sof         # relative to project_dir
+  # Path (relative to project_dir) the ROM IP reads its initial
+  # contents from at synthesis time. build_fpga.py overwrites this
+  # file and recompiles the whole project for every test.
+  rom_mif_target: ips/ROM1PORT/init.mif
+  # From `jtagconfig` on this workstation:
+  #   1) USB-Blaster [1-4]
+  #     02B050DD   5CE(BA4|FA4)
+  jtag_hardware: "USB-Blaster [1-4]"
+  jtag_device: "@1: 5CE(BA4|FA4) (0x02B050DD)"
+  # Instance indices Quartus' In-System Memory Content Editor assigns
+  # to the ROM/RAM debug taps, in declaration order in the project
+  # (see core_fpga_test.vhd: ROM is instantiated first, RAM second —
+  # matches the RV32IM Makefile's own loadROM.tcl/dumpMemory.tcl,
+  # which already use 0/1 the same way). The mailbox lives inside RAM,
+  # so it shares RAM's instance index.
+  mailbox_mem_instance: 1
+  ram_mem_instance: 1
+  program_wait_seconds: 15    # time to let the program run before reading results back over JTAG
