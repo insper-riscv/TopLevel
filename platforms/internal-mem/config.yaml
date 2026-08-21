@@ -54,11 +54,22 @@ quartus:
   # Path (relative to project_dir) the ROM IP reads its initial
   # contents from at synthesis time. build_fpga.py overwrites this
   # file and recompiles the whole project for every test.
-  rom_mif_target: ips/ROM1PORT/init.mif
-  # From `jtagconfig` on this workstation:
-  #   1) USB-Blaster [1-4]
-  #     02B050DD   5CE(BA4|FA4)
-  jtag_hardware: "USB-Blaster [1-4]"
+  #
+  # NOT ips/ROM1PORT/init.mif (that's just where the IP's own template
+  # copy lives) — rom1port.vhd's init_file generic is the literal
+  # string "./init.mif", resolved relative to quartus_sh's cwd
+  # (project_dir) at compile time, i.e. the top-level file here.
+  # Confirmed by dumping the ROM back over JTAG after overwriting the
+  # ips/ copy: the board kept running an unrelated stale program
+  # (word9 == 0xDEAD0137, a leftover from some earlier experiment)
+  # until this was pointed at the right file.
+  rom_mif_target: init.mif
+  # jtag_hardware isn't configured here: the "USB-Blaster [<bus>-<port>]"
+  # suffix reflects USB topology and drifts across reboots/hub
+  # renumbering (seen firsthand: "[1-4]" became "[1-10]" between two
+  # runs on this same machine) — build_fpga.py detects it live via
+  # `jtagconfig` instead. jtag_device is the FPGA's own JTAG IDCODE,
+  # which doesn't change:
   jtag_device: "@1: 5CE(BA4|FA4) (0x02B050DD)"
   # Instance indices Quartus' In-System Memory Content Editor assigns
   # to the ROM/RAM debug taps, in declaration order in the project
