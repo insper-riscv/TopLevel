@@ -1,6 +1,6 @@
 # Configuration for the RISC-V test build/run pipeline.
 #
-# The "real" side is wired to ../RV32IM/tests/FPGA/core/quartus
+# The "real" side is wired to ../tests/FPGA/core/quartus
 # (core_fpga_test.qpf) — the only working core + Quartus project on
 # this workstation. Lines still marked "<<< ADJUST" depend on things
 # that vary per machine/runner (which JTAG cable, which self-hosted
@@ -52,9 +52,10 @@ paths:
   golden_dir: tests/c/real/golden
 
 quartus:
-  # Points at RV32IM's real project (sibling repo, not nested under
-  # this folder) rather than a project living inside test/.
-  project_dir: ../RV32IM/tests/FPGA/core/quartus
+  # Points at RV32IM's real project — this repo (RISC-V-Workstation-
+  # Tests) is vendored as RV32IM's own Tests/ submodule, so RV32IM's
+  # root is one level up from this project's own root.
+  project_dir: ../tests/FPGA/core/quartus
   project_name: core_fpga_test                     # core_fpga_test.qpf/.qsf
   sof_file: output_files/core_fpga_test.sof         # relative to project_dir
   # Path (relative to project_dir) the ROM IP reads its initial
@@ -107,47 +108,48 @@ sim:
   # inside. rv32i3stage_core_sim_test instantiates ROM_simulation/
   # RAM_simulation instead — plain VHDL arrays cocotb can read.
   toplevel: rv32i3stage_core_sim_test
-  # In dependency order (verified against RV32IM's own
-  # tests/python/tests.json, which already builds this exact
-  # toplevel from this exact source list for its instruction-level
-  # tests). Relative to this project's root, not RV32IM's.
+  # In dependency order (verified against tests/python/tests.json in
+  # this same repo, which already builds this exact toplevel from
+  # this exact source list for its instruction-level tests). Relative
+  # to this project's own root, not RV32IM's (see quartus.project_dir
+  # above for how the two relate).
   vhdl_sources:
-    - ../RV32IM/src/rv32i_ctrl_consts.vhd
-    - ../RV32IM/src/rv32im_pipeline_types.vhd
-    - ../RV32IM/src/genericRegister.vhd
-    - ../RV32IM/src/genericAdder.vhd
-    - ../RV32IM/src/genericAdderU.vhd
-    - ../RV32IM/src/genericMux2x1.vhd
-    - ../RV32IM/src/genericMux3x1.vhd
-    - ../RV32IM/src/FlipFlop.vhd
-    - ../RV32IM/src/ALU.vhd
-    - ../RV32IM/src/RegFile.vhd
-    - ../RV32IM/src/RAM_simulation.vhd
-    - ../RV32IM/src/ROM_simulation.vhd
-    - ../RV32IM/src/InstructionDecoder.vhd
-    - ../RV32IM/src/ExtenderImm.vhd
-    - ../RV32IM/src/ExtenderRAM.vhd
-    - ../RV32IM/src/StoreManager.vhd
-    - ../RV32IM/src/clk_gen_3way.vhd
-    - ../RV32IM/src/control_unit.vhd
-    - ../RV32IM/src/bubble_mux.vhd
-    - ../RV32IM/src/forwarding_unit.vhd
-    - ../RV32IM/src/hazard_detection_unit.vhd
-    - ../RV32IM/src/extendSigned.vhd
-    - ../RV32IM/src/decoderM.vhd
-    - ../RV32IM/src/booth_multiplier_rv32.vhd
-    - ../RV32IM/src/non_restoring_divider_rv32.vhd
-    - ../RV32IM/src/mult.vhd
-    - ../RV32IM/src/div.vhd
-    - ../RV32IM/src/divu.vhd
-    - ../RV32IM/src/multdiv.vhd
-    - ../RV32IM/src/pc_fetch.vhd
-    - ../RV32IM/src/reg_IF_ID.vhd
-    - ../RV32IM/src/reg_ID_EX.vhd
-    - ../RV32IM/src/reg_EX_MEM.vhd
-    - ../RV32IM/src/reg_MEM_WB.vhd
-    - ../RV32IM/src/rv32im_pipeline_core.vhd
-    - ../RV32IM/src/rv32i3stage_core_sim_test.vhd
+    - ../src/rv32i_ctrl_consts.vhd
+    - ../src/rv32im_pipeline_types.vhd
+    - ../src/genericRegister.vhd
+    - ../src/genericAdder.vhd
+    - ../src/genericAdderU.vhd
+    - ../src/genericMux2x1.vhd
+    - ../src/genericMux3x1.vhd
+    - ../src/FlipFlop.vhd
+    - ../src/ALU.vhd
+    - ../src/RegFile.vhd
+    - ../src/RAM_simulation.vhd
+    - ../src/ROM_simulation.vhd
+    - ../src/InstructionDecoder.vhd
+    - ../src/ExtenderImm.vhd
+    - ../src/ExtenderRAM.vhd
+    - ../src/StoreManager.vhd
+    - ../src/clk_gen_3way.vhd
+    - ../src/control_unit.vhd
+    - ../src/bubble_mux.vhd
+    - ../src/forwarding_unit.vhd
+    - ../src/hazard_detection_unit.vhd
+    - ../src/extendSigned.vhd
+    - ../src/decoderM.vhd
+    - ../src/booth_multiplier_rv32.vhd
+    - ../src/non_restoring_divider_rv32.vhd
+    - ../src/mult.vhd
+    - ../src/div.vhd
+    - ../src/divu.vhd
+    - ../src/multdiv.vhd
+    - ../src/pc_fetch.vhd
+    - ../src/reg_IF_ID.vhd
+    - ../src/reg_ID_EX.vhd
+    - ../src/reg_EX_MEM.vhd
+    - ../src/reg_MEM_WB.vhd
+    - ../src/rv32im_pipeline_core.vhd
+    - ../src/rv32i3stage_core_sim_test.vhd
   test_module: tools.riscv_build.sim.test_c_program
   ghdl_std: "08"
   # ROM_simulation reads its program image via a VHDL generic (a
