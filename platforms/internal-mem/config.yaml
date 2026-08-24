@@ -35,6 +35,12 @@ memory:
   # tools/riscv_build/include/rv32_test.h). Must stay in sync with
   # link.ld's RAM length below.
   mailbox_addr: 0x00003FFC
+  # Second-to-last word: the "go" flag crt0.S's restart loop polls.
+  # Writing a nonzero word here over JTAG (after loading a new ROM
+  # image, without reprogramming the FPGA) makes the core jump back to
+  # _start and run it — see the "no full recompile per test" note
+  # under quartus: below.
+  go_flag_addr: 0x00003FF8
 
 paths:
   include_dir: tools/riscv_build/include
@@ -77,6 +83,19 @@ quartus:
   # matches the RV32IM Makefile's own loadROM.tcl/dumpMemory.tcl,
   # which already use 0/1 the same way). The mailbox lives inside RAM,
   # so it shares RAM's instance index.
+  rom_mem_instance: 0
   mailbox_mem_instance: 1
   ram_mem_instance: 1
-  program_wait_seconds: 15    # time to let the program run before reading results back over JTAG
+  # Fallback only: build_fpga.py compiles + quartus_pgm's ONCE, then
+  # per test just JTAG-writes the new ROM image + pulses go_flag_addr
+  # (crt0.S jumps back to _start on its own — no recompile, no
+  # reprogram). This full flow — quartus_sh --flow compile, then
+  # quartus_pgm — only runs again if a test's mailbox never responds
+  # within its timeout (see build_tests.py's RV32_TIMEOUT_S header),
+  # as a recovery path.
+  program_wait_seconds: 15
+  # How often to poll the mailbox while waiting (see
+  # default_timeout_s / a test's own RV32_TIMEOUT_S header).
+  poll_interval_seconds: 0.5
+  # Default per-test timeout if a test doesn't set RV32_TIMEOUT_S.
+  default_timeout_s: 15
