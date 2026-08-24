@@ -99,3 +99,66 @@ quartus:
   poll_interval_seconds: 0.5
   # Default per-test timeout if a test doesn't set RV32_TIMEOUT_S.
   default_timeout_s: 15
+
+sim:
+  # Full-pipeline GHDL simulation top — NOT core_fpga_test (the real
+  # hardware top): that one instantiates the real Quartus ROM1PORT/
+  # RAM1PORT IP (altsyncram-based), which GHDL/cocotb can't peek
+  # inside. rv32i3stage_core_sim_test instantiates ROM_simulation/
+  # RAM_simulation instead — plain VHDL arrays cocotb can read.
+  toplevel: rv32i3stage_core_sim_test
+  # In dependency order (verified against RV32IM's own
+  # tests/python/tests.json, which already builds this exact
+  # toplevel from this exact source list for its instruction-level
+  # tests). Relative to this project's root, not RV32IM's.
+  vhdl_sources:
+    - ../RV32IM/src/rv32i_ctrl_consts.vhd
+    - ../RV32IM/src/rv32im_pipeline_types.vhd
+    - ../RV32IM/src/genericRegister.vhd
+    - ../RV32IM/src/genericAdder.vhd
+    - ../RV32IM/src/genericAdderU.vhd
+    - ../RV32IM/src/genericMux2x1.vhd
+    - ../RV32IM/src/genericMux3x1.vhd
+    - ../RV32IM/src/FlipFlop.vhd
+    - ../RV32IM/src/ALU.vhd
+    - ../RV32IM/src/RegFile.vhd
+    - ../RV32IM/src/RAM_simulation.vhd
+    - ../RV32IM/src/ROM_simulation.vhd
+    - ../RV32IM/src/InstructionDecoder.vhd
+    - ../RV32IM/src/ExtenderImm.vhd
+    - ../RV32IM/src/ExtenderRAM.vhd
+    - ../RV32IM/src/StoreManager.vhd
+    - ../RV32IM/src/clk_gen_3way.vhd
+    - ../RV32IM/src/control_unit.vhd
+    - ../RV32IM/src/bubble_mux.vhd
+    - ../RV32IM/src/forwarding_unit.vhd
+    - ../RV32IM/src/hazard_detection_unit.vhd
+    - ../RV32IM/src/extendSigned.vhd
+    - ../RV32IM/src/decoderM.vhd
+    - ../RV32IM/src/booth_multiplier_rv32.vhd
+    - ../RV32IM/src/non_restoring_divider_rv32.vhd
+    - ../RV32IM/src/mult.vhd
+    - ../RV32IM/src/div.vhd
+    - ../RV32IM/src/divu.vhd
+    - ../RV32IM/src/multdiv.vhd
+    - ../RV32IM/src/pc_fetch.vhd
+    - ../RV32IM/src/reg_IF_ID.vhd
+    - ../RV32IM/src/reg_ID_EX.vhd
+    - ../RV32IM/src/reg_EX_MEM.vhd
+    - ../RV32IM/src/reg_MEM_WB.vhd
+    - ../RV32IM/src/rv32im_pipeline_core.vhd
+    - ../RV32IM/src/rv32i3stage_core_sim_test.vhd
+  test_module: tools.riscv_build.sim.test_c_program
+  ghdl_std: "08"
+  # ROM_simulation reads its program image via a VHDL generic (a
+  # file-open process inside the VHDL itself), not sim_runner's own
+  # ROM_HEX env var — see rv32i3stage_core_sim_test.vhd. The
+  # rom_addr_width/ram_addr_width generics size ROM_simulation/
+  # RAM_simulation's memory arrays to match memory.rom_words/
+  # ram_words above (2**13=8192, 2**12=4096) — both default to 2**9
+  # (512 words) inside rv32i3stage_core_sim_test.vhd, too small to
+  # hold mailbox_addr (word offset 4095).
+  parameters:
+    ROM_FILE: "{hex_path}"
+    rom_addr_width: "13"
+    ram_addr_width: "12"
