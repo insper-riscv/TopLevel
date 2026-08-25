@@ -47,9 +47,8 @@ paths:
   crt0: tools/riscv_build/crt0.S
   linker_script: tools/riscv_build/link.ld
   build_dir: build
-  tests_real_dir: tests/c/real
-  tests_sim_dir: tests/c/sim
-  golden_dir: tests/c/real/golden
+  c_dir: c
+  asm_dir: asm
 
 quartus:
   # Points at RV32IM's real project — this repo (RISC-V-Workstation-
