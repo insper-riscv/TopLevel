@@ -45,12 +45,15 @@ async def test_program(dut) -> None:
 
     cocotb.start_soon(Clock(dut.CLK, 10, unit="ns").start())
 
+    cycles_used = 0
+
     dut.reset.value = 1
     await ClockCycles(dut.CLK, 5)
     dut.reset.value = 0
 
     for _ in range(TIMEOUT_CYCLES):
         await RisingEdge(dut.CLK)
+        cycles_used += 1
 
         if dut.ram_wren.value != 1 or dut.ram_en.value != 1:
             continue
@@ -62,6 +65,7 @@ async def test_program(dut) -> None:
         mailbox = int(dut.ram_wdata.value)
         if mailbox == MAILBOX_PASS:
             dut._log.info("PASS")
+            dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
             return
         if mailbox == MAILBOX_FAIL:
             raise AssertionError("test signalled FAIL via RV32_FAIL()")
