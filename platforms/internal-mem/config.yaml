@@ -23,24 +23,29 @@ isa:
   canonical_order: "MAFDQLCBJTPVNH"
 
 memory:
-  # rv32im_pipeline_core is Harvard: rom_addr and ram_addr are two
-  # independent buses, each its own flat space starting at 0x0 — this
-  # is NOT a unified memory map. A load/store at 0x0 always hits RAM
-  # word 0, regardless of where the PC is in ROM.
+  # rv32im_pipeline_core is Harvard MODIFICADO: ROM and RAM are still
+  # two physically independent BRAMs (rom_addr/ram_addr are separate
+  # buses), but the ROM has a second read port wired to the MEM stage
+  # (rom2port.vhd) and the two now share ONE non-overlapping address
+  # space, decoded by bit 16 (is_rom_data in
+  # rv32im_pipeline_core.vhd): 0x00000000-0x0000FFFF = ROM,
+  # 0x00010000-0x0001FFFF = RAM. This is what lets a `lw` reach ROM at
+  # all — see docs/DATA_HARVARD_BUG.md for why that used to be
+  # impossible.
   rom_base: 0x00000000
-  rom_words: 8192       # ROM1PORT: numwords_a=8192, widthad_a=13 (see rom1port.vhd)
-  ram_base: 0x00000000
-  ram_words: 4096        # RAM1PORT: numwords_a=4096, widthad_a=12 (see ram1port.vhd)
+  rom_words: 16384       # ROM2PORT: numwords_a/b=16384, widthad_a/b=14 (see rom2port.vhd)
+  ram_base: 0x00010000
+  ram_words: 16384        # RAM1PORT: numwords_a=16384, widthad_a=14 (see ram1port.vhd)
   # Last word of RAM, reserved for the PASS/FAIL mailbox (see
   # tools/riscv_build/include/rv32_test.h). Must stay in sync with
   # link.ld's RAM length below.
-  mailbox_addr: 0x00003FFC
+  mailbox_addr: 0x0001FFFC
   # Second-to-last word: the "go" flag crt0.S's restart loop polls.
   # Writing a nonzero word here over JTAG (after loading a new ROM
   # image, without reprogramming the FPGA) makes the core jump back to
   # _start and run it — see the "no full recompile per test" note
   # under quartus: below.
-  go_flag_addr: 0x00003FF8
+  go_flag_addr: 0x0001FFF8
 
 paths:
   include_dir: tools/riscv_build/include
@@ -79,11 +84,19 @@ quartus:
   jtag_device: "@1: 5CE(BA4|FA4) (0x02B050DD)"
   # Instance indices Quartus' In-System Memory Content Editor assigns
   # to the ROM/RAM debug taps, in declaration order in the project
-  # (see core_fpga_test.vhd: ROM is instantiated first, RAM second —
-  # matches the RV32IM Makefile's own loadROM.tcl/dumpMemory.tcl,
-  # which already use 0/1 the same way). The mailbox lives inside RAM,
-  # so it shares RAM's instance index.
-  rom_mem_instance: 0
+  # (see core_fpga_test.vhd: ROM instantiated first (0), RAM second
+  # (1) — matches the RV32IM Makefile's own loadROM.tcl/
+  # dumpMemory.tcl, which already use 0/1 the same way). The mailbox
+  # lives inside RAM, so it shares RAM's instance index.
+  #
+  # Harvard modificado: ROM_MEM (the second physical ROM copy backing
+  # the MEM stage's read port — see
+  # ips/ROM1PORT_MEM/rom1port_mem.vhd) is instantiated LAST, after
+  # RAM, specifically so it doesn't shift RAM's already-relied-on
+  # index of 1 — it picks up whatever index comes next (2). Verify
+  # against the real quartus_map/fitter report if this project's
+  # instantiation order in core_fpga_test.vhd ever changes.
+  rom_mem_instances: [0, 2]
   mailbox_mem_instance: 1
   ram_mem_instance: 1
   # Fallback only: build_fpga.py compiles + quartus_pgm's ONCE, then
@@ -95,8 +108,18 @@ quartus:
   # as a recovery path.
   program_wait_seconds: 15
   # How often to poll the mailbox while waiting (see
-  # default_timeout_s / a test's own RV32_TIMEOUT_S header).
-  poll_interval_seconds: 0.5
+  # default_timeout_s / a test's own RV32_TIMEOUT_S header). Each poll
+  # is its own quartus_stp subprocess (a fresh JTAG/In-System Memory
+  # Editor session, opened and closed from scratch) — 0.5s let a
+  # 15s-timeout test issue up to ~30 of these back to back, and that
+  # volume of rapid session churn turned out to be unreliable on this
+  # board (a genuine PASS/FAIL already sitting in the mailbox was
+  # missed, reported as "no mailbox result" instead — see
+  # docs/DATA_HARVARD_BUG.md for how this was found and confirmed by
+  # reading the same mailbox manually, once, with a real gap, and
+  # getting the answer immediately). Fewer, more spaced-out polls
+  # trade a bit of detection latency for reliability.
+  poll_interval_seconds: 2.5
   # Default per-test timeout if a test doesn't set RV32_TIMEOUT_S.
   default_timeout_s: 15
 
@@ -161,5 +184,7 @@ sim:
   # hold mailbox_addr (word offset 4095).
   parameters:
     ROM_FILE: "{hex_path}"
-    rom_addr_width: "13"
-    ram_addr_width: "12"
+    # 64K ROM / 64K RAM (Harvard modificado, ver docs/ -- plano em
+    # andamento) -- 16384 palavras cada, 14 bits de indice.
+    rom_addr_width: "14"
+    ram_addr_width: "14"
