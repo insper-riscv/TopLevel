@@ -100,6 +100,14 @@ paths:
   include_dir: tools/riscv_build/include
   crt0: tools/riscv_build/crt0.S
   linker_script: tools/riscv_build/link.ld
+  # Optional (riscv_tools.cli only links this in when set): a _sbrk()
+  # stub, just enough for newlib's malloc()/free() to work — compiler
+  # no longer passes -nostdlib (see compiler/build.py), so a test that
+  # actually references malloc pulls in newlib normally; one that
+  # doesn't is completely unaffected (the linker never even looks at
+  # this file's own object for it). Heap grows from link.ld's own
+  # _bss_end towards _stack_top — see syscalls.c's own header comment.
+  syscalls: tools/riscv_build/syscalls.c
   build_dir: build
   c_dir: c
   asm_dir: asm
