@@ -32,10 +32,12 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from riscv_tools.mailbox import word_offset
 
 # Must stay in sync with config.yaml's memory.mailbox_addr and
-# crt0.S's own hardcoded mailbox lui/sw — same duplication crt0.S
-# already has, not sourced from config.yaml here since ROM_simulation
-# already takes its program image via a VHDL generic, not env/argv (see
-# module docstring).
+# boot_rom.S's own hardcoded mailbox li/sw (the mailbox write itself
+# still comes from the TEST's own RV32_PASS()/RV32_FAIL(), compiled
+# into FLASH — boot_rom.S only CLEARS it on _reset) — same duplication
+# crt0.S used to have, not sourced from config.yaml here since
+# ROM_simulation already takes its program image via a VHDL generic,
+# not env/argv (see module docstring).
 #
 # dut.ram_addr below is the raw top-level bus (rv32im_pipeline_core's
 # own ram_addr output, i.e. exmem_alu_out) — an ABSOLUTE byte address,
@@ -43,7 +45,7 @@ from riscv_tools.mailbox import word_offset
 # word_offset()'s default), which addresses RAM through the In-System
 # Memory Editor's own 0-based internal word index. relative=False picks
 # the bus-snoop convention instead — see word_offset's own docstring.
-MAILBOX_ADDR = 0x0001FFFC
+MAILBOX_ADDR = 0x0002FFFC
 MAILBOX_WORD_OFFSET = word_offset(0, MAILBOX_ADDR, relative=False)
 TIMEOUT_CYCLES = 200_000
 MAILBOX_PASS = 1
