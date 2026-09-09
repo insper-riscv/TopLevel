@@ -313,3 +313,17 @@ act:
   # extensions here (comma-separated) as the RTL grows them — A
   # (Zaamo,Zalrsc) next, most likely — see rv32im-min.yaml.
   extensions: "I,M"
+  # Overrides sim: parameters' rom_addr_width/ram_addr_width above,
+  # which are sized to match REAL hardware's actual FLASH/RAM budget
+  # (see memory: above / MEMORY_ARCHITECTURE.md) — an official
+  # architectural test's own combinatorial coverage can be far bigger
+  # than anything this project's own hand-picked suite needs (found
+  # the hard way: I-jal-00's build overflowed the real-hardware-sized
+  # ROM by ~72KB). ACT4 never runs on real hardware at all (see
+  # certify's own module docstring) — its ROM_simulation/
+  # RAM_simulation are plain VHDL arrays with no real M10K budget to
+  # respect, so sizing generously here is free. rv32im-min/link.ld's
+  # own MEMORY block must match these (4M/2M).
+  sim_parameters:
+    rom_addr_width: "20"
+    ram_addr_width: "19"
