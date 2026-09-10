@@ -184,3 +184,7 @@ documentados com o diagnóstico completo no histórico do projeto:
 Ambos só afetavam leitura/verificação (JTAG ou `.data`), nunca a lógica
 pura do pipeline; por isso a simulação GHDL (que ou lê os sinais crus do
 barramento, ou nunca tinha `.data` não-vazio pra exercitar) nunca os pegou.
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../LICENSE).

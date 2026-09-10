@@ -150,3 +150,7 @@ Com os três problemas corrigidos, os 14 testes da suíte real (11 vindos da
 divisão do antigo `full.S` + `example-add` + `example-integration-mem` +
 `section6-loadstore`) passaram via `riscv-tools run` contra a placa
 Cyclone V real.
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../LICENSE).

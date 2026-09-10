@@ -112,3 +112,7 @@ invisível por todo o histórico do projeto até um teste minúsculo
 um erro claro. `tp` recebeu o mesmo tratamento preventivo por essa razão
 específica: não esperar até algo realmente usar TLS pra descobrir que também
 estava quebrado.
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../LICENSE).
