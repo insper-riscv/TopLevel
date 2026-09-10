@@ -155,7 +155,7 @@ Memory Content Editor usa pra numerar as instâncias):
 | LED     | Sinal              | Significado                                                        |
 |---------|--------------------|----------------------------------------------------------------------|
 | LEDR(0) | `Blinky`           | Pisca direto do `CLOCK_50`, sem relação com o core, "placa viva".  |
-| LEDR(1) | `pll_locked`       | Deveria ficar **sempre aceso** depois de configurar a FPGA. Apagado = PLL nunca travou (ver `bugs/PLL_LOCK_LOSS_BUG.md`). |
+| LEDR(1) | `pll_locked`       | Deveria ficar **sempre aceso** depois de configurar a FPGA. Apagado = PLL nunca travou (ver [PLL_LOCK_LOSS_BUG.md](bugs/PLL_LOCK_LOSS_BUG.md)). |
 | LEDR(2) | `FPGA_RESET_N`     | Aceso = botão físico de reset **solto**. Apagado = botão pressionado. |
 | LEDR(3) | `not core_reset`   | Aceso = core fora de reset, rodando. Apagado = core em reset (PLL sem lock, ou botão pressionado). |
 | LEDR(4-9) | (não usados)     | Livres: usados como latches de debug temporários durante o bring-up da placa, removidos depois de servirem seu propósito. |
