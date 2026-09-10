@@ -1,23 +1,23 @@
 # O estado de boot de referência deste RISC-V bare-metal
 
-Boot neste core acontece across dois arquivos, ligados separadamente:
+Boot neste core acontece em dois arquivos, ligados separadamente:
 `boot_rom.S` (`tools/riscv_build/boot_rom.S`), fixo e compartilhado,
 programado em BOOT_ROM uma única vez e nunca reescrito por teste, faz
 o trabalho de verdade (inicializa `sp`, copia `.data`, zera `.bss`,
 limpa a mailbox); e `crt0.S` (`tools/riscv_build/crt0.S`), específico
 de cada teste, reduzido a um trampolim minúsculo (`_flash_entry`) que
 só carrega os limites de `.data`/`.bss`/`gp`/`main` **daquele teste**
-em registradores via busca de instrução pura (sem acesso a dado, ver
-"Por que o handoff é código, não dado" abaixo) antes de saltar pro
-código fixo de `boot_rom.S`.
+em registradores via busca de instrução pura, antes de saltar pro
+código fixo de `boot_rom.S`. Ver
+[PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro porquê
+dessa divisão e como o controle passa de um lado pro outro.
 
 Este documento descreve, registrador por registrador e seção por
 seção, exatamente que estado existe no instante em que `main()` é
 chamado, e, tão importante quanto, o que **não** é feito e por quê.
 A base já deixa o hart num estado válido segundo a ABI oficial do
 RISC-V
-([riscv-elf-psabi-doc](https://github.com/riscv-non-isa/riscv-elf-psabi-doc)),
-não um atalho específico deste projeto.
+([riscv-elf-psabi-doc](https://github.com/riscv-non-isa/riscv-elf-psabi-doc)).
 
 ## A sequência de boot
 
@@ -68,20 +68,6 @@ de CSR em nenhum dos arquivos VHDL do core (confirmado inspecionando
 `csrw`/`csrr`/`ecall` neste core não tem definição conhecida de
 comportamento; nenhum teste deste projeto faz isso.
 
-## Por que o handoff é código, não dado
-
-`boot_rom.S` é fixo e compartilhado entre todos os testes; ele não
-enxerga os símbolos de linker de um teste específico (cada teste tem
-seu próprio `.data`/`.bss`/`__global_pointer$`, todos em endereços
-potencialmente diferentes). BOOT_ROM e FLASH são só de busca de
-instrução (IF) neste core: nada dá ao estágio MEM um caminho de dado
-até qualquer um dos dois, só até RAM (ver
-[MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md)). Por isso
-`_flash_entry` não pode deixar uma tabela de dados em FLASH pra
-`boot_rom.S` ler com `lw`, isso silenciosamente leria RAM em vez de
-FLASH; precisa ser código (`la`, busca de instrução pura) que carrega
-esses limites em registradores antes de saltar.
-
 ## Seções de memória: estado no boot
 
 | Seção | O que é | Estado antes de `main()` |
@@ -117,22 +103,6 @@ esses limites em registradores antes de saltar.
   boot (não do reset em si); `s0`-`s11`/`a1`-`a7` nunca são tocados.
   Um programa correto nunca deveria depender do valor inicial de
   nenhum deles.
-
-## Por que a divisão entre `crt0.S` e `boot_rom.S` existe
-
-O redesign de memória BOOT_ROM+FLASH+RAM (ver
-[MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md)) tornou BOOT_ROM
-fixo e reprogramado só uma vez, enquanto FLASH é reescrita via JTAG a
-cada troca de teste. Um bootloader fixo não pode conter lógica
-específica de cada teste (seus próprios limites de `.data`/`.bss`,
-seu próprio `gp`), então esse trabalho ficou em `crt0.S`
-(recompilado e reescrito junto com cada teste), e só o trabalho
-genérico (inicializar `sp`, copiar o que o trampolim indicou, limpar a
-mailbox) ficou em `boot_rom.S`. Isso segue diretamente da restrição
-de que BOOT_ROM/FLASH são só IF: qualquer coisa que dependesse de
-`boot_rom.S` ler dado específico do teste em FLASH simplesmente não
-funcionaria neste hardware (ver "Por que o handoff é código, não
-dado" acima).
 
 ---
 

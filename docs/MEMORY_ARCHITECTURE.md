@@ -37,8 +37,10 @@ JTAG depois disso, diferente de FLASH. Contém `boot_rom.S`
 (`tools/riscv_build/boot_rom.S`): o vetor de reset, o loop de cópia de
 `.data` (FLASH → RAM), o loop de zerar `.bss`, a limpeza de
 mailbox/go_flag/tohost/fromhost, e o loop de espera/restart
-(`rv32_wait_restart`) que deixa `build_fpga.py` trocar de teste sem
-reprogramar a FPGA inteira.
+(`rv32_wait_restart`) que deixa `riscv-tools run` trocar de teste sem
+reprogramar a FPGA inteira; ver
+[PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro fluxo
+completo dessa troca.
 
 É genérico de propósito: não conhece o `.data`/`.bss` de teste nenhum. O
 "handoff" de cada teste pra ele é **código, não dado**: o próprio
