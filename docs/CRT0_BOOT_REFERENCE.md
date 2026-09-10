@@ -20,7 +20,7 @@ não um atalho específico deste projeto.
 | `x0` | `zero` | `0`, sempre | Hardwired em silício — nenhuma instrução pode mudar isso, não precisa (nem pode) ser inicializado. |
 | `x1` | `ra` | Endereço de retorno de `call main` (a instrução `jal` que chama `main`) | Convenção normal de chamada — `main` retornando usa esse `ra` pra voltar pro ponto logo depois do `call main` em `_start` (que cai direto no código de restart). |
 | `x2` | `sp` | `_stack_top` (topo da RAM, ver `link.ld`) | Pilha cresce pra baixo a partir daqui. É o primeiro registrador "de verdade" que `_start` inicializa (depois de `gp`/`tp`, ver abaixo). |
-| `x3` | `gp` | `__global_pointer$` (calculado via `auipc`+`addi`, `.option norelax`) | Necessário pra qualquer acesso `gp`-relative a `.sdata`/`.sbss` funcionar — ver [SMALL_DATA_SECTION_BUG.md](SMALL_DATA_SECTION_BUG.md) pro bug real que motivou isso: sem essa inicialização, um acesso gp-relative lê/escreve endereço arbitrário, não um valor errado. |
+| `x3` | `gp` | `__global_pointer$` (calculado via `auipc`+`addi`, `.option norelax`) | Necessário pra qualquer acesso `gp`-relative a `.sdata`/`.sbss` funcionar — ver [SMALL_DATA_SECTION_BUG.md](bugs/SMALL_DATA_SECTION_BUG.md) pro bug real que motivou isso: sem essa inicialização, um acesso gp-relative lê/escreve endereço arbitrário, não um valor errado. |
 | `x4` | `tp` | `_tls_base` (= início de `.tdata`, ver `link.ld`) | Convenção RISC-V TLS "Variant I": `tp` aponta um byte além do fim do TCB (Thread Control Block). Este bare-metal não tem TCB real (sem linkagem dinâmica, sem DTV), então o tamanho do TCB é 0 e `tp` = início direto do bloco TLS. Nada usa TLS hoje (nenhum `.tdata`/`.tbss` não-vazio em nenhum teste), mas fica pronto — mesma classe de bug que `gp` teria se não fosse inicializado. |
 | `x5`–`x7` | `t0`–`t2` | **Não garantido** — usados como scratch durante o boot (cópia de `.data`, zeragem de `.bss`, mailbox) | São *caller-saved*/temporários pela ABI — nenhuma convenção exige que estejam zerados na entrada de um programa, só que uma função que os usa não precisa preservá-los pro chamador. `main()` não deve assumir nada sobre o valor inicial deles. |
 | `x8` | `s0`/`fp` | **Não inicializado** — o que o hardware deixou no reset | *Callee-saved* pela ABI: é responsabilidade de quem usa (tipicamente o prólogo de uma função com frame pointer) salvar/restaurar, não de quem inicializa o ambiente. Um SO completo tipicamente também não zera isso — só importa a partir do primeiro `push`/uso real. |
@@ -56,7 +56,7 @@ conversa que motivou este documento.
 | `.text` | Código (ROM) | Já está lá — carregado via JTAG/`.mif`, nada a fazer em runtime. |
 | `.rodata` | Constantes somente-leitura (ROM) | Idem — direto da ROM, nunca copiado pra RAM. |
 | `.data` | Globais inicializados "grandes" (RAM, carga vem da ROM) | Copiado byte a byte (4 em 4 bytes) de `_data_load` (endereço na ROM) pra `[_data_start, _data_end)` na RAM. |
-| `.sdata`/`.srodata` | Globais pequenos (RISC-V "small data", endereçados via `gp`) — parte do mesmo range `[_data_start, _data_end)` | Copiados junto com `.data` no mesmo loop — ver [SMALL_DATA_SECTION_BUG.md](SMALL_DATA_SECTION_BUG.md) pra história de como isso ficou de fora originalmente. |
+| `.sdata`/`.srodata` | Globais pequenos (RISC-V "small data", endereçados via `gp`) — parte do mesmo range `[_data_start, _data_end)` | Copiados junto com `.data` no mesmo loop — ver [SMALL_DATA_SECTION_BUG.md](bugs/SMALL_DATA_SECTION_BUG.md) pra história de como isso ficou de fora originalmente. |
 | `.bss`/`.sbss` | Globais não-inicializados (RAM) | Zerados, `[_bss_start, _bss_end)` — `_bss_start` marca o início de `.sbss`, não de `.bss`, pra manter as duas seções contíguas com um único loop. |
 | `.tdata`/`.tbss` | Dados thread-local (TLS) | Mesmo tratamento copy/zero que `.data`/`.bss` — hoje sempre vazio (nada usa `__thread`), loops rodam zero iterações. |
 | Pilha | Cresce de `_stack_top` pra baixo | Nunca "inicializada" no sentido de conteúdo — só o ponteiro (`sp`) é definido. Conteúdo é lixo até ser escrito. |
@@ -104,7 +104,7 @@ pronto aqui:
 ## Por que isso importa: a lição do bug de `.sdata`
 
 O motivo de este documento existir é justamente o bug documentado em
-[SMALL_DATA_SECTION_BUG.md](SMALL_DATA_SECTION_BUG.md): um registrador
+[SMALL_DATA_SECTION_BUG.md](bugs/SMALL_DATA_SECTION_BUG.md): um registrador
 "especial" (`gp`) nunca foi inicializado porque, até então, nenhum teste
 pequeno o suficiente exercitava o caminho que dependia dele — o bug ficou
 invisível por todo o histórico do projeto até um teste minúsculo
