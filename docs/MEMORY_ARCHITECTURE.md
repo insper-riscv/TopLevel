@@ -42,16 +42,19 @@ reprogramar a FPGA inteira; ver
 [PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro fluxo
 completo dessa troca.
 
-É genérico de propósito: não conhece o `.data`/`.bss` de teste nenhum. O
-"handoff" de cada teste pra ele é **código, não dado**: o próprio
-`crt0.S` de cada teste emite um trampolim (`.flash_entry`, primeira coisa em
-FLASH) que carrega os limites de `.data`/`.bss`/`gp`/`main` em registradores
-via `la` (busca de instrução pura, sem MEM) antes de saltar pra
-`_boot_continue` em BOOT_ROM.
+É genérico de propósito, mas não completamente cego: `link.ld` dá a cada
+seção um endereço e um orçamento de tamanho fixos, os mesmos pra qualquer
+teste, então `_data_start`/`_data_end`/`_bss_start`/`_bss_end`/`gp` são a
+mesma constante sempre, e `boot_rom.S` carrega todos eles direto (`li`).
+A única coisa que varia por teste é o endereço de `main`, que `crt0.S`
+emite como uma única palavra de dado (`.flash_header`, primeira coisa em
+FLASH) e `boot_rom.S` lê com um `lw`; ver
+[PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro porquê desses
+endereços serem fixos e como o handoff funciona.
 
 ### FLASH: o "firmware" de cada teste
 
-O programa de verdade de cada teste (`.flash_entry` + `.text`), reescrito
+O programa de verdade de cada teste (`.flash_header` + `.text` + `.rodata`), reescrito
 via JTAG (In-System Memory Content Editor) toda vez que um teste troca;
 mesmo papel que a antiga `ROM` tinha antes do redesign. Fisicamente é uma
 `altsyncram` do tipo RAM (não uma flash de verdade), mas architeturalmente
@@ -60,11 +63,13 @@ execuções, nunca pela CPU em tempo de execução.
 
 ### RAM: dado de verdade
 
-`.data`/`.rodata`/`.bss`/pilha. A única memória que o estágio MEM
-(load/store) sempre alcança. Os últimos 24 bytes do espaço físico da IP são
-reservados (fora do `LENGTH(RAM)` que `link.ld` dá ao teste) para:
-mailbox + go_flag (2 palavras) e tohost/fromhost (4 palavras, convenção HTIF
-usada só pelo Spike/ACT4).
+`.data`/`.sdata`/`.sbss`/`.bss`/pilha/heap. A única memória que o estágio
+MEM (load/store) sempre alcança para escrita; `.rodata` (constantes
+grandes) fica residente em FLASH, nunca copiado pra cá, ver "FLASH precisa
+de uma segunda porta de leitura" abaixo. Os últimos 24 bytes do espaço
+físico da IP são reservados (fora do `LENGTH(RAM)` que `link.ld` dá ao
+teste) para: mailbox + go_flag (2 palavras) e tohost/fromhost (4 palavras,
+convenção HTIF usada só pelo Spike/ACT4).
 
 ## FLASH precisa de uma segunda porta de leitura: o limite do Quartus Lite
 
