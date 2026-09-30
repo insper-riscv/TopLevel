@@ -51,38 +51,38 @@ sim:
   # PLL is a behavioral stand-in (its real model is SystemVerilog) and
   # the top is the hardware top itself, unchanged.
   vhdl_sources:
-    - ../src/rv32i_ctrl_consts.vhd
-    - ../src/rv32im_pipeline_types.vhd
-    - ../src/genericRegister.vhd
-    - ../src/genericAdder.vhd
-    - ../src/genericAdderU.vhd
-    - ../src/genericMux2x1.vhd
-    - ../src/genericMux3x1.vhd
-    - ../src/FlipFlop.vhd
-    - ../src/ALU.vhd
-    - ../src/RegFile.vhd
-    - ../src/InstructionDecoder.vhd
-    - ../src/ExtenderImm.vhd
-    - ../src/ExtenderRAM.vhd
-    - ../src/StoreManager.vhd
-    - ../src/control_unit.vhd
-    - ../src/bubble_mux.vhd
-    - ../src/forwarding_unit.vhd
-    - ../src/hazard_detection_unit.vhd
-    - ../src/extendSigned.vhd
-    - ../src/decoderM.vhd
-    - ../src/booth_multiplier_rv32.vhd
-    - ../src/non_restoring_divider_rv32.vhd
-    - ../src/mult.vhd
-    - ../src/div.vhd
-    - ../src/divu.vhd
-    - ../src/multdiv.vhd
-    - ../src/pc_fetch.vhd
-    - ../src/reg_IF_ID.vhd
-    - ../src/reg_ID_EX.vhd
-    - ../src/reg_EX_MEM.vhd
-    - ../src/reg_MEM_WB.vhd
-    - ../src/rv32im_pipeline_core.vhd
+    - ../Core/common/rv32i_ctrl_consts.vhd
+    - ../Core/common/rv32im_pipeline_types.vhd
+    - ../Core/common/genericRegister.vhd
+    - ../Core/common/genericAdder.vhd
+    - ../Core/common/genericAdderU.vhd
+    - ../Core/common/genericMux2x1.vhd
+    - ../Core/common/genericMux3x1.vhd
+    - ../Core/common/FlipFlop.vhd
+    - ../Core/I/ALU.vhd
+    - ../Core/common/RegFile.vhd
+    - ../Core/common/InstructionDecoder.vhd
+    - ../Core/I/ExtenderImm.vhd
+    - ../Core/I/ExtenderRAM.vhd
+    - ../Core/I/StoreManager.vhd
+    - ../Core/common/control_unit.vhd
+    - ../Core/common/bubble_mux.vhd
+    - ../Core/common/forwarding_unit.vhd
+    - ../Core/common/hazard_detection_unit.vhd
+    - ../Core/common/extendSigned.vhd
+    - ../Core/M/decoderM.vhd
+    - ../Core/M/booth_multiplier_rv32.vhd
+    - ../Core/M/non_restoring_divider_rv32.vhd
+    - ../Core/M/mult.vhd
+    - ../Core/M/div.vhd
+    - ../Core/M/divu.vhd
+    - ../Core/M/multdiv.vhd
+    - ../Core/common/pc_fetch.vhd
+    - ../Core/common/reg_IF_ID.vhd
+    - ../Core/common/reg_ID_EX.vhd
+    - ../Core/common/reg_EX_MEM.vhd
+    - ../Core/common/reg_MEM_WB.vhd
+    - ../Core/cores/rv32im_pipeline_core.vhd
     - ../src/Blinky.vhd
     - ../tests/FPGA/core/quartus/ips/BOOT_ROM1PORT/boot_rom1port.vhd
     - ../tests/FPGA/core/quartus/ips/FLASH1PORT/flash1port.vhd
