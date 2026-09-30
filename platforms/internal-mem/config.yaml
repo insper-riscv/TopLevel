@@ -233,8 +233,8 @@ sim:
     - ../Core/common/FlipFlop.vhd
     - ../Core/I/ALU.vhd
     - ../Core/common/RegFile.vhd
-    - ../src/RAM_simulation.vhd
-    - ../src/ROM_simulation.vhd
+    - ../Memory/sim/RAM_simulation.vhd
+    - ../Memory/sim/ROM_simulation.vhd
     - ../Core/common/InstructionDecoder.vhd
     - ../Core/I/ExtenderImm.vhd
     - ../Core/I/ExtenderRAM.vhd

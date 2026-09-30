@@ -79,11 +79,11 @@ checks:
   - {name: core RAM_BASE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'RAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
 
   # --- Quartus IPs (only in RV32IM's tree) ---------------------------------
-  - {name: BOOT_ROM IP numwords, file: ../tests/FPGA/core/quartus/ips/BOOT_ROM1PORT/boot_rom1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: BOOT_ROM.words}
-  - {name: BOOT_ROM IP widthad, file: ../tests/FPGA/core/quartus/ips/BOOT_ROM1PORT/boot_rom1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(BOOT_ROM.words)}
-  - {name: FLASH IP numwords, file: ../tests/FPGA/core/quartus/ips/FLASH1PORT/flash1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: FLASH.words}
-  - {name: FLASH IP widthad, file: ../tests/FPGA/core/quartus/ips/FLASH1PORT/flash1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
-  - {name: FLASH_MEM IP numwords, file: ../tests/FPGA/core/quartus/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: FLASH.words}
-  - {name: FLASH_MEM IP widthad, file: ../tests/FPGA/core/quartus/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
-  - {name: RAM IP numwords, file: ../tests/FPGA/core/quartus/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: RAM.words}
-  - {name: RAM IP widthad, file: ../tests/FPGA/core/quartus/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(RAM.words)}
+  - {name: BOOT_ROM IP numwords, file: ../Memory/ips/BOOT_ROM1PORT/boot_rom1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: BOOT_ROM.words}
+  - {name: BOOT_ROM IP widthad, file: ../Memory/ips/BOOT_ROM1PORT/boot_rom1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(BOOT_ROM.words)}
+  - {name: FLASH IP numwords, file: ../Memory/ips/FLASH1PORT/flash1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: FLASH.words}
+  - {name: FLASH IP widthad, file: ../Memory/ips/FLASH1PORT/flash1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
+  - {name: FLASH_MEM IP numwords, file: ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: FLASH.words}
+  - {name: FLASH_MEM IP widthad, file: ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
+  - {name: RAM IP numwords, file: ../Memory/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: RAM.words}
+  - {name: RAM IP widthad, file: ../Memory/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(RAM.words)}
