@@ -7,12 +7,15 @@
 # runner labels) — see README.md.
 
 toolchain:
-  # riscv-collab/riscv-gnu-toolchain (elf/newlib variant). CI always
-  # pulls the latest nightly rather than pinning a tag, since the
-  # project has no "stable" release and this is the same toolchain
-  # used in production. See README.md.
+  # The RISC-V GCC insper-riscv/Infra's GCC_SETUP.md builds into
+  # /opt/riscv-foundation (rv32im/ilp32, picolibc, one library variant),
+  # on PATH through its wrappers.
   gcc: riscv32-unknown-elf-gcc
   objcopy: riscv32-unknown-elf-objcopy
+  # Tests link against that toolchain's picolibc. syscalls (below) still
+  # supplies this project's own malloc()/free(), which take precedence over
+  # picolibc's because they are defined in an object on the command line.
+  libc: picolibc
 
 isa:
   base: i                    # always implied, never written in a test's header
