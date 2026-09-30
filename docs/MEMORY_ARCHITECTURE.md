@@ -34,27 +34,23 @@ link "Correção definitiva" aponta pra este documento).
 Programado **uma única vez**, como parte do compile completo inicial do
 Quartus (`quartus_sh --flow compile` + `quartus_pgm`); nunca reescrito via
 JTAG depois disso, diferente de FLASH. Contém `boot_rom.S`
-(`tools/riscv_build/boot_rom.S`): o vetor de reset, o loop de cópia de
-`.data` (FLASH → RAM), o loop de zerar `.bss`, a limpeza de
-mailbox/go_flag/tohost/fromhost, e o loop de espera/restart
-(`rv32_wait_restart`) que deixa `riscv-tools run` trocar de teste sem
-reprogramar a FPGA inteira; ver
+(`platform/boot_rom.S`): o vetor de reset, que limpa
+mailbox/go_flag/tohost/fromhost e o cabeçalho do `stdout` e salta pra
+FLASH, e o loop de espera/restart (`rv32_wait_restart`) que deixa
+`riscv-tools run` trocar de teste sem reprogramar a FPGA inteira; ver
 [PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro fluxo
 completo dessa troca.
 
-É genérico de propósito, mas não completamente cego: `link.ld` dá a cada
-seção um endereço e um orçamento de tamanho fixos, os mesmos pra qualquer
-teste, então `_data_start`/`_data_end`/`_bss_start`/`_bss_end`/`gp` são a
-mesma constante sempre, e `boot_rom.S` carrega todos eles direto (`li`).
-A única coisa que varia por teste é o endereço de `main`, que `crt0.S`
-emite como uma única palavra de dado (`.flash_header`, primeira coisa em
-FLASH) e `boot_rom.S` lê com um `lw`; ver
-[PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro porquê desses
-endereços serem fixos e como o handoff funciona.
+É genérico de propósito e não sabe nada de um teste: o `crt0` da picolibc,
+dentro da imagem de cada teste (começando em `0x800`), copia o `.data`,
+zera o `.bss` e chama `main`; o que a BOOT_ROM e o programa combinam é só
+o ponto de entrada, o endereço do `rv32_wait_restart` e as palavras do topo
+da RAM. Ver [RUNTIME.md](RUNTIME.md) e
+[PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md).
 
 ### FLASH: o "firmware" de cada teste
 
-O programa de verdade de cada teste (`.flash_header` + `.text` + `.rodata`), reescrito
+O programa de verdade de cada teste (`.init` + `.text` + `.rodata`, mais a imagem inicial de `.data`), reescrito
 via JTAG (In-System Memory Content Editor) toda vez que um teste troca;
 mesmo papel que a antiga `ROM` tinha antes do redesign. Fisicamente é uma
 `altsyncram` do tipo RAM (não uma flash de verdade), mas architeturalmente
@@ -66,10 +62,11 @@ execuções, nunca pela CPU em tempo de execução.
 `.data`/`.sdata`/`.sbss`/`.bss`/pilha/heap. A única memória que o estágio
 MEM (load/store) sempre alcança para escrita; `.rodata` (constantes
 grandes) fica residente em FLASH, nunca copiado pra cá, ver "FLASH precisa
-de uma segunda porta de leitura" abaixo. Os últimos 24 bytes do espaço
-físico da IP são reservados (fora do `LENGTH(RAM)` que `link.ld` dá ao
-teste) para: mailbox + go_flag (2 palavras) e tohost/fromhost (4 palavras,
-convenção HTIF usada só pelo Spike/ACT4).
+de uma segunda porta de leitura" abaixo. Os últimos 1056 bytes do espaço
+físico da IP são reservados (fora do `__ram_size` que `rv32im-fpga.specs`
+dá ao teste) para: mailbox + go_flag (2 palavras), tohost/fromhost (4
+palavras, convenção HTIF usada só pelo Spike/ACT4) e o buffer do `stdout`
+(1032 bytes, ver [RUNTIME.md](RUNTIME.md)).
 
 ## FLASH precisa de uma segunda porta de leitura: o limite do Quartus Lite
 
@@ -116,12 +113,13 @@ fixos).
 | BOOT_ROM               | `0x00000000` | 2K               | 512    | 9       |
 | FLASH / FLASH_MEM      | `0x00000800` | 30K              | 7680   | 13      |
 | RAM (espaço físico)    | `0x00008000` | 160K             | 40960  | 16      |
-| RAM (útil, `link.ld`)  | `0x00008000` | 160K − 24 bytes  | N/A      | N/A       |
+| RAM (útil, `rv32im-fpga.specs`) | `0x00008000` | 160K − 24 − 1032 bytes | N/A | N/A |
+| `stdout` (cabeçalho e dados) | `0x0002FBE0` | 1032 bytes | N/A | N/A |
 | mailbox_addr           | `0x0002FFFC` | 1 palavra        | N/A      | N/A       |
 | go_flag_addr           | `0x0002FFF8` | 1 palavra        | N/A      | N/A       |
 | fromhost               | `0x0002FFF0` | 2 palavras       | N/A      | N/A       |
 | tohost                 | `0x0002FFE8` | 2 palavras       | N/A      | N/A       |
-| `_stack_top` (sp)      | `0x0002FFE8` | N/A                | N/A      | N/A       |
+| `__stack` (sp inicial) | `0x0002FBE0` | N/A                | N/A      | N/A       |
 
 FLASH ficou em **30K** (não 32K, que seria o número "redondo" óbvio) por um
 motivo específico: o topo de RAM (`ram_base + ram_words*4 = 0x30000`)
