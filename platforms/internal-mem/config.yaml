@@ -246,6 +246,7 @@ sim:
     - ../Core/common/hazard_detection_unit.vhd
     - ../Core/common/extendSigned.vhd
     - ../Core/M/decoderM.vhd
+    - ../Core/M/m_decode.vhd
     - ../Core/M/booth_multiplier_rv32.vhd
     - ../Core/M/non_restoring_divider_rv32.vhd
     - ../Core/M/mult.vhd
