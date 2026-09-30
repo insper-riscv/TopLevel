@@ -63,7 +63,15 @@ memory:
   # Sizes below (BOOT_ROM 2K / FLASH 30K / RAM 160K, ~192K total) are
   # the SECOND cut — the first (66K/224K) genuinely worked in
   # simulation but blew past the Cyclone V 5CEBA4F23's real, hard
-  # 308-M10K-block ceiling once FLASH_MEM (see quartus:
+  # 308-M10K-block ceiling once FLASH_MEM (see # Only needed by `riscv-tools freq-sweep` (Fmax search). The PLL has
+# three outputs (clk_if/clk_idexmem/clk_wb), one frequency in three
+# phases 0/120/240 degrees; the sweep rewrites all three together.
+# Path is relative to this project's root (RV32IM's root is one level up).
+freq_sweep:
+  pll_file: ../src/PLL/pll_0002.v
+  phase_count: 3
+
+quartus:
   # rom_mem_instances below) doubled FLASH's cost: confirmed via a
   # real `quartus_sh --flow compile` failure ("Error (170048): ...
   # needs more than 308 to successfully fit"), not just bit-budget
