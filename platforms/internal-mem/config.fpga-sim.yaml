@@ -85,9 +85,9 @@ sim:
     - ../Core/common/reg_MEM_WB.vhd
     - ../Core/cores/rv32im_pipeline_core.vhd
     - ../src/Blinky.vhd
-    - ../tests/FPGA/core/quartus/ips/BOOT_ROM1PORT/boot_rom1port.vhd
-    - ../tests/FPGA/core/quartus/ips/FLASH1PORT/flash1port.vhd
-    - ../tests/FPGA/core/quartus/ips/FLASH_MEM1PORT/flash_mem1port.vhd
-    - ../tests/FPGA/core/quartus/ips/RAM1PORT/ram1port.vhd
+    - ../Memory/ips/BOOT_ROM1PORT/boot_rom1port.vhd
+    - ../Memory/ips/FLASH1PORT/flash1port.vhd
+    - ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd
+    - ../Memory/ips/RAM1PORT/ram1port.vhd
     - ../tests/FPGA/core/sim/pll_sim.vhd
     - ../tests/FPGA/core/quartus/core_fpga_test.vhd
