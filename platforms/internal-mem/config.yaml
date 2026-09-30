@@ -12,10 +12,10 @@ toolchain:
   # on PATH through its wrappers.
   gcc: riscv32-unknown-elf-gcc
   objcopy: riscv32-unknown-elf-objcopy
-  # Tests link against that toolchain's picolibc. syscalls (below) still
-  # supplies this project's own malloc()/free(), which take precedence over
-  # picolibc's because they are defined in an object on the command line.
-  libc: picolibc
+  # The platform (memory map, crt0) is one GCC specs file. Tests link
+  # against the toolchain's own picolibc, crt0 and picolibc.ld: this
+  # project has no crt0 and no linker script of its own.
+  specs: rv32im-fpga.specs
 
 isa:
   base: i                    # always implied, never written in a test's header
@@ -101,34 +101,21 @@ memory:
 
 paths:
   include_dir: tools/riscv_build/include
-  crt0: tools/riscv_build/crt0.S
-  linker_script: tools/riscv_build/link.ld
-  # Optional (riscv_tools.cli only links this in when set): a _sbrk()
-  # stub, just enough for newlib's malloc()/free() to work — compiler
-  # no longer passes -nostdlib (see compiler/build.py), so a test that
-  # actually references malloc pulls in newlib normally; one that
-  # doesn't is completely unaffected (the linker never even looks at
-  # this file's own object for it). Heap grows from link.ld's own
-  # _bss_end towards _stack_top — see syscalls.c's own header comment.
-  syscalls: tools/riscv_build/syscalls.c
+  # The platform's own parts of the runtime, compiled into every test:
+  # the _exit the toolchain's crt0 ends in, and the write function of
+  # stdout (a buffer in RAM the host reads over JTAG).
+  sources:
+    - platform/_exit.c
+    - platform/stdio.c
   build_dir: build
   c_dir: c
   asm_dir: asm
   # The fixed, shared bootloader (see boot_rom.S's own header comment)
-  # — built ONCE (not per test) into boot_rom.elf/.hex/.mif, unlike
-  # crt0/linker_script above which get pulled into every test's own
-  # build. boot_rom_symbols.ld (rv32_wait_restart's fixed address) is
-  # `INCLUDE`d directly by link.ld, not referenced here.
-  boot_rom: tools/riscv_build/boot_rom.S
-  boot_rom_linker_script: tools/riscv_build/boot_rom.ld
-  # Spike-only combined link (boot_rom.S + crt0.S + a test's own
-  # source in ONE elf) — see golden.ld's own header comment. Only used
-  # by _generate_c_golden (cli.py), for "memory"-kind C tests'
-  # auto-generated golden.json: Spike needs a single, self-contained
-  # ELF it can run from cold (BOOT_ROM's real _reset entry point),
-  # since real hardware's separately-linked BOOT_ROM/FLASH images
-  # don't exist as one runnable thing outside the actual chip.
-  golden_linker_script: tools/riscv_build/golden.ld
+  # — built ONCE (not per test) into boot_rom.elf/.hex/.mif. It only
+  # clears the fixed words and jumps to FLASH_BASE, where the crt0 is,
+  # and holds rv32_wait_restart.
+  boot_rom: platform/boot_rom.S
+  boot_rom_linker_script: platform/boot_rom.ld
 
 quartus:
   # Points at RV32IM's real project — this repo (RISC-V-Workstation-
@@ -288,15 +275,17 @@ sim:
     rom_addr_width: "13"
     ram_addr_width: "16"
 
-# Overrides golden_generator's own DEFAULTS (see
-# golden_generator/__config__.py in the Tools package) — entry_symbol
-# defaults to "_start", the usual crt0 entry label, but this project's
-# real entry point is boot_rom.S's `_reset` (see paths.golden_linker_script
-# above / _generate_c_golden in cli.py: Spike runs a combined boot_rom+
-# test elf starting from BOOT_ROM's own reset vector, the same way
-# real hardware actually boots).
+# Spike runs each test's own image, which starts at the crt0's _start.
+# On the hardware that image ends in rv32_wait_restart, a routine of the
+# separate boot ROM at 0x100, so Spike's ELF is built with a stand-in
+# for it (platform/spike_exit.S: the mailbox translated to HTIF, plus the
+# tohost/fromhost symbols) and with -DRV32_SPIKE, which leaves the fixed
+# address out of the link (see rv32im-fpga.specs).
 emulator:
-  entry_symbol: "_reset"
+  sources:
+    - platform/spike_exit.S
+  gcc_flags:
+    - -DRV32_SPIKE
 
 # ACT4 (RISC-V Architectural Certification Tests) — a separate track
 # from this project's own c/asm test suite above: validates against
