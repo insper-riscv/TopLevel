@@ -28,7 +28,7 @@ concordar de antemão sobre onde tudo mora.
 4. Ao ver o go-flag setado, `rv32_wait_restart` salta pra `_reset`
    (endereço fixo `0x0`). Antes de esperar, ele traduziu o mailbox que o
    teste anterior escreveu para o valor HTIF de `tohost` (convenção
-   Spike/ACT4, sem efeito em hardware real).
+   Spike, sem efeito em hardware real).
 5. `_reset` zera mailbox, go-flag, `tohost`, `fromhost` e o cabeçalho do
    `stdout` (pra não vazar o resultado nem a saída do teste anterior) e
    salta pra `FLASH_BASE` (`0x00000800`).
