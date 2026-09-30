@@ -65,7 +65,7 @@ grandes) fica residente em FLASH, nunca copiado pra cá, ver "FLASH precisa
 de uma segunda porta de leitura" abaixo. Os últimos 1056 bytes do espaço
 físico da IP são reservados (fora do `__ram_size` que `rv32im-fpga.specs`
 dá ao teste) para: mailbox + go_flag (2 palavras), tohost/fromhost (4
-palavras, convenção HTIF usada só pelo Spike/ACT4) e o buffer do `stdout`
+palavras, convenção HTIF usada só pelo Spike) e o buffer do `stdout`
 (1032 bytes, ver [RUNTIME.md](RUNTIME.md)).
 
 ## FLASH precisa de uma segunda porta de leitura: o limite do Quartus Lite

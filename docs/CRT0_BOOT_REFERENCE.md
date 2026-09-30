@@ -42,7 +42,7 @@ Os endereços vêm do `picolibc.ld` e de `rv32im-fpga.specs` (FLASH de `0x800`, 
 | Pilha | RAM, topo em `0x0002FBE0` | Só o ponteiro (`sp`) é definido; 4 KB reservados |
 | `stdout` | RAM, `0x0002FBE0` a `0x0002FFE7` | Cabeçalho zerado pela BOOT_ROM (ver [RUNTIME.md](RUNTIME.md)) |
 | Mailbox (`0x0002FFFC`) / go flag (`0x0002FFF8`) | RAM | Zerados a cada entrada em `_reset`, cold boot ou restart, pra nunca vazar o resultado do teste anterior |
-| `fromhost` (`0x0002FFF0`) / `tohost` (`0x0002FFE8`) | RAM | Zerados a cada entrada em `_reset`; convenção HTIF, só o Spike e o ACT4 a usam |
+| `fromhost` (`0x0002FFF0`) / `tohost` (`0x0002FFE8`) | RAM | Zerados a cada entrada em `_reset`; convenção HTIF, só o Spike a usa |
 
 ## O que essa sequência de boot deliberadamente NÃO faz
 
