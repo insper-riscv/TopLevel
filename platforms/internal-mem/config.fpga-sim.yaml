@@ -1,0 +1,92 @@
+# Simulation profile: the REAL hardware top (core_fpga_test), with the
+# real Quartus memory IP (altsyncram) running on Intel's own simulation
+# models, instead of config.yaml's simulation top, whose memories are
+# plain VHDL arrays (ROM_simulation/RAM_simulation).
+#
+#   QUARTUS_ROOTDIR=/opt/altera_lite/25.1std/quartus \
+#     riscv-tools --config tools/riscv_build/config.fpga-sim.yaml compile --emit mif
+#   QUARTUS_ROOTDIR=... \
+#     riscv-tools --config tools/riscv_build/config.fpga-sim.yaml sim
+#
+# Only `sim:` differs from config.yaml (see docs/SIMULACAO_TOPO_FPGA.md).
+# Needs Quartus' altera_mf simulation library (QUARTUS_ROOTDIR/eda/sim_lib),
+# so it runs where Quartus is installed, not on a hosted runner.
+extends: config.yaml
+
+sim:
+  toplevel: core_fpga_test
+  # The images the hardware loads, from `compile --emit mif`.
+  image: mif
+  # altera_mf needs -fsynopsys (ieee.std_logic_unsigned) and -fexplicit.
+  ghdl_flags: ["-fsynopsys", "-frelaxed", "-fexplicit"]
+  libraries:
+    altera_mf:
+      - $QUARTUS_ROOTDIR/eda/sim_lib/altera_mf_components.vhd
+      - $QUARTUS_ROOTDIR/eda/sim_lib/altera_mf.vhd
+  # The hardware top has no VHDL generics: the memory IP reads its
+  # initial content from the files named below.
+  parameters: null
+  # altsyncram's init_file is "./init.mif" (FLASH and FLASH_MEM) and
+  # "./boot_rom_init.mif" (BOOT_ROM), read from the simulator's working
+  # directory at time zero; the same names the Quartus flow uses.
+  run_files:
+    init.mif: "{mif_path}"
+    boot_rom_init.mif: "{boot_rom_mif_path}"
+  test_module: tools.riscv_build.sim.test_c_program
+  # What test_c_program.py drives: the hardware top's ports, not the
+  # simulation top's CLK/reset.
+  env:
+    SIM_CLOCK: CLOCK_50
+    SIM_CLOCK_PERIOD_NS: "20"
+    SIM_RESET: FPGA_RESET_N
+    SIM_RESET_ACTIVE: "0"
+    # The RAM and the core run on the PLL's second output, so the write
+    # bus is sampled on that clock, once per core cycle.
+    SIM_SAMPLE_CLOCK: pll_clk_idexmem
+    # config.yaml's 200000 counts ticks of the simulation top's base
+    # clock, three per core cycle; here one tick is one core cycle.
+    SIM_TIMEOUT_CYCLES: "70000"
+  # In dependency order. The core is the same as config.yaml's, the
+  # memories are the Quartus IP wrappers of the hardware project, the
+  # PLL is a behavioral stand-in (its real model is SystemVerilog) and
+  # the top is the hardware top itself, unchanged.
+  vhdl_sources:
+    - ../src/rv32i_ctrl_consts.vhd
+    - ../src/rv32im_pipeline_types.vhd
+    - ../src/genericRegister.vhd
+    - ../src/genericAdder.vhd
+    - ../src/genericAdderU.vhd
+    - ../src/genericMux2x1.vhd
+    - ../src/genericMux3x1.vhd
+    - ../src/FlipFlop.vhd
+    - ../src/ALU.vhd
+    - ../src/RegFile.vhd
+    - ../src/InstructionDecoder.vhd
+    - ../src/ExtenderImm.vhd
+    - ../src/ExtenderRAM.vhd
+    - ../src/StoreManager.vhd
+    - ../src/control_unit.vhd
+    - ../src/bubble_mux.vhd
+    - ../src/forwarding_unit.vhd
+    - ../src/hazard_detection_unit.vhd
+    - ../src/extendSigned.vhd
+    - ../src/decoderM.vhd
+    - ../src/booth_multiplier_rv32.vhd
+    - ../src/non_restoring_divider_rv32.vhd
+    - ../src/mult.vhd
+    - ../src/div.vhd
+    - ../src/divu.vhd
+    - ../src/multdiv.vhd
+    - ../src/pc_fetch.vhd
+    - ../src/reg_IF_ID.vhd
+    - ../src/reg_ID_EX.vhd
+    - ../src/reg_EX_MEM.vhd
+    - ../src/reg_MEM_WB.vhd
+    - ../src/rv32im_pipeline_core.vhd
+    - ../src/Blinky.vhd
+    - ../tests/FPGA/core/quartus/ips/BOOT_ROM1PORT/boot_rom1port.vhd
+    - ../tests/FPGA/core/quartus/ips/FLASH1PORT/flash1port.vhd
+    - ../tests/FPGA/core/quartus/ips/FLASH_MEM1PORT/flash_mem1port.vhd
+    - ../tests/FPGA/core/quartus/ips/RAM1PORT/ram1port.vhd
+    - ../tests/FPGA/core/sim/pll_sim.vhd
+    - ../tests/FPGA/core/quartus/core_fpga_test.vhd
