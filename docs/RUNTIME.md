@@ -100,7 +100,7 @@ O programa de um teste termina no `rv32_wait_restart`, que no hardware é códig
 
 - O ISA é `rv32im`: sem ponto flutuante em hardware (`float` e `double` rodam por software, pela libgcc). Decidir isso com calma antes de portar código que use.
 - O core não tem CSR nem trap: nada de `signal`, `ecall` nem semihosting. O `crt0` e a `libc.a` não têm instruções de CSR.
-- **Bug de hardware:** duas instruções de multiplicação ou divisão seguidas (`div` e `rem`, `rem` e `div`, `divu` e `remu`) fazem a segunda devolver o resultado da primeira, então as conversões de inteiro do `printf` (`%d`, `%x`) saem erradas, e o mesmo vale para qualquer código que calcule `n / 10` e `n % 10`. A causa provável está em `rv32im_pipeline_core.vhd`: o início da operação é gerado só na borda de subida de "a instrução é multiplicação ou divisão". Os testes `asm/div-rem-back-to-back` e `c/stdout-printf-int` reproduzem e estão desligados (`.off`) até o core ser corrigido. Passam no Spike.
+- **Multiplicação ou divisão seguidas:** até a correção do PR #33 do `RV32IM`, duas instruções da extensão M em sequência (`div` e `rem`, `rem` e `div`, `divu` e `remu`, dois `mul`) faziam a segunda devolver o resultado da primeira, e as conversões de inteiro do `printf` (`%d`, `%x`) saíam erradas. A correção (um pulso de `start` por instrução, em `rv32im_pipeline_core.vhd`) foi verificada **só em simulação**, nos dois perfis; não foi compilada no Quartus nem testada na placa. Os testes `asm/div-rem-back-to-back` e `c/stdout-printf-int` cobrem o caso.
 
 ---
 
