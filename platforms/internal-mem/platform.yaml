@@ -75,8 +75,8 @@ checks:
   - {name: rv32_test.h mailbox, file: tools/riscv_build/include/rv32_test.h, pattern: 'RV32_MAILBOX_ADDR \(\(volatile unsigned int \*\)(0x[0-9A-Fa-f]+)\)', expect: mailbox.base}
 
   # --- VHDL of the core ----------------------------------------------------
-  - {name: core BOOT_ROM_SIZE_BYTES, file: ../src/rv32im_pipeline_core.vhd, pattern: 'BOOT_ROM_SIZE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: BOOT_ROM.size}
-  - {name: core RAM_BASE_BYTES, file: ../src/rv32im_pipeline_core.vhd, pattern: 'RAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
+  - {name: core BOOT_ROM_SIZE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'BOOT_ROM_SIZE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: BOOT_ROM.size}
+  - {name: core RAM_BASE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'RAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
 
   # --- Quartus IPs (only in RV32IM's tree) ---------------------------------
   - {name: BOOT_ROM IP numwords, file: ../tests/FPGA/core/quartus/ips/BOOT_ROM1PORT/boot_rom1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: BOOT_ROM.words}
