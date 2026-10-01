@@ -19,6 +19,7 @@ RAM inside the FPGA.
 | `rtl/` | the simulation top `rv32i3stage_core_sim_test` (plain VHDL arrays for memory, in place of the IPs), `clk_gen_3way`, `Blinky` |
 | `runtime/` | what the platform adds to the toolchain's picolibc: `rv32im-fpga.specs` (the GCC specs file with the memory map), `boot_rom.S` and `boot_rom.ld`, `_exit.c`, `stdio.c`, and `spike_exit.S` (the Spike stand-in for the boot ROM's `rv32_wait_restart`) |
 | `testbench/` | `test_c_program.py`, the cocotb testbench that watches the RAM write bus for a program's PASS/FAIL |
+| `../../tests/python/` | per-entity cocotb tests of the platform's RTL (`clk_gen_3way`) and the catalog (`tests.json`) that drives them |
 | `config.yaml`, `config.fpga-sim.yaml` | the `riscv-tools` configuration of the platform: toolchain, memory, Quartus, simulation (the simulation top, and the hardware top on Intel's `altera_mf` models) |
 
 `docs/` explains the memory architecture, the boot, how a new program replaces the
@@ -52,6 +53,7 @@ uv sync
 make paths        # every path the configs and the .qsf list exists
 make memory-map   # every copy of the memory map agrees with platform.yaml
 make check        # GHDL builds the simulation top
+make test         # per-entity cocotb tests of the RTL (clk_gen_3way)
 ```
 
 The tools (GHDL, uv) come from the `infra-toolchain` image of
