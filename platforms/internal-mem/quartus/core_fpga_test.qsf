@@ -58,8 +58,8 @@ set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
-set_global_assignment -name VERILOG_FILE ../../../../src/PLL/pll_0002.v
-set_global_assignment -name VHDL_FILE ../../../../src/PLL/pll.vhd
+set_global_assignment -name VERILOG_FILE ../pll/pll_0002.v
+set_global_assignment -name VHDL_FILE ../pll/pll.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/I/ALU.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/InstructionDecoder.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/RegFile.vhd
@@ -84,7 +84,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/common/genericAdder.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/FlipFlop.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/I/ExtenderRAM.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/I/ExtenderImm.vhd
-set_global_assignment -name VHDL_FILE ../../../../src/Blinky.vhd
+set_global_assignment -name VHDL_FILE ../rtl/Blinky.vhd
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/BOOT_ROM1PORT/boot_rom1port.qip
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/FLASH1PORT/flash1port.qip
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/RAM1PORT/ram1port.qip

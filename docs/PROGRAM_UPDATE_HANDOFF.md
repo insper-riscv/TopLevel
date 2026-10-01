@@ -15,7 +15,7 @@ concordar de antemão sobre onde tudo mora.
 
 1. **Programação inicial (uma única vez)**: `quartus_sh --flow compile`
    + `quartus_pgm` carrega o bitstream inteiro, incluindo o conteúdo
-   inicial de BOOT_ROM (`platform/boot_rom.S`) e da primeira FLASH/RAM.
+   inicial de BOOT_ROM (`platforms/internal-mem/runtime/boot_rom.S`) e da primeira FLASH/RAM.
    BOOT_ROM nunca mais é tocada depois disso.
 2. **Troca de teste (caminho rápido)**: `riscv-tools run` reescreve
    FLASH (as duas cópias físicas, `FLASH`/`FLASH_MEM`, ver
@@ -47,8 +47,8 @@ não lê nada da FLASH.
 ## Por que BOOT_ROM nunca é reescrita por teste
 
 `_reset` e `rv32_wait_restart` são endereços fixos (`0x0`, `0x100`,
-ver `platform/boot_rom.ld`), resolvidos no link **único e separado** de
-`platform/boot_rom.S`, não no link de cada teste. Se BOOT_ROM fosse
+ver `platforms/internal-mem/runtime/boot_rom.ld`), resolvidos no link **único e separado** de
+`platforms/internal-mem/runtime/boot_rom.S`, não no link de cada teste. Se BOOT_ROM fosse
 reescrita por teste como FLASH é, cada nova compilação poderia mover
 esses offsets, e todo teste que já tem esses mesmos endereços fixos
 embutidos no próprio binário (via `--defsym=rv32_wait_restart=0x100`
@@ -65,7 +65,7 @@ memória em reescrita.
 
 ## O que a BOOT_ROM e o programa combinam
 
-`platform/boot_rom.S` é compilado e linkado **antes** de qualquer teste
+`platforms/internal-mem/runtime/boot_rom.S` é compilado e linkado **antes** de qualquer teste
 existir: seu binário não pode conter nada de um teste específico. Esse é o
 problema que qualquer atualização remota de firmware enfrenta: um bootloader
 fixo, que não pode ser regravado remotamente (o risco de travar o dispositivo

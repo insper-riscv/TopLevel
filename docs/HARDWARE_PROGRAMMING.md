@@ -15,7 +15,7 @@ acima internamente:
 
 ```bash
 export PATH="/opt/riscv-foundation/riscv32-elf/bin:$PATH"
-cd Tests   # ou o caminho até este repo, se vendorado como submódulo do RV32IM
+cd Tests   # o projeto de testes (repositório Tests, ou RV32IM/Tests): o config.yaml dele estende o desta plataforma
 uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
 uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
 uv run riscv-tools --config tools/riscv_build/config.yaml run
@@ -26,7 +26,7 @@ pontual), faça isso em **um único** comando de shell, nunca em dois `Bash`
 separados:
 
 ```bash
-cd tests/FPGA/core/quartus && \
+cd platforms/internal-mem/quartus && \
   quartus_sh --flow compile core_fpga_test && \
   quartus_pgm -c "USB-Blaster [1-4]" -m JTAG -o "p;output_files/core_fpga_test.sof"
 ```

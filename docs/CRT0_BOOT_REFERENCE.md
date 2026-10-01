@@ -1,6 +1,6 @@
 # O estado de boot de referência deste RISC-V bare-metal
 
-O boot neste core passa por dois lados: a BOOT_ROM (`platform/boot_rom.S`), fixa e compartilhada, programada uma única vez e nunca reescrita por teste, e o `crt0` da picolibc, que vai dentro da imagem de cada teste na FLASH. Este projeto não tem `crt0` nem linker script próprios: ver [RUNTIME.md](RUNTIME.md) pra de onde vêm e como usar. Ver [PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro como o controle passa de um lado pro outro a cada troca de teste.
+O boot neste core passa por dois lados: a BOOT_ROM (`platforms/internal-mem/runtime/boot_rom.S`), fixa e compartilhada, programada uma única vez e nunca reescrita por teste, e o `crt0` da picolibc, que vai dentro da imagem de cada teste na FLASH. Este projeto não tem `crt0` nem linker script próprios: ver [RUNTIME.md](RUNTIME.md) pra de onde vêm e como usar. Ver [PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro como o controle passa de um lado pro outro a cada troca de teste.
 
 Este documento descreve, registrador por registrador e seção por seção, exatamente que estado existe no instante em que `main()` é chamado, e, tão importante quanto, o que **não** é feito. O estado segue a ABI oficial do RISC-V
 ([riscv-elf-psabi-doc](https://github.com/riscv-non-isa/riscv-elf-psabi-doc)).
@@ -10,7 +10,7 @@ Este documento descreve, registrador por registrador e seção por seção, exat
 1. O reset entra em `_reset` (`0x0`, na BOOT_ROM): limpa mailbox, go flag, `tohost`, `fromhost` e o cabeçalho do `stdout`, e salta para `0x800`. Não inicializa `sp`, `gp` nem copia nada.
 2. Em `0x800` está o `_start` do `crt0-hosted` da picolibc: ajusta `sp` (de `__stack`) e `gp` (de `__global_pointer$`) e chama o `_cstart`.
 3. O `_cstart` copia `.data` e `.tdata` da FLASH para a RAM (com `memcpy`), zera `.bss` (com `memset`), prepara o TLS (`_set_tls`) e roda os construtores (`__libc_init_array`).
-4. Chama `main(0, 0)` com `jal`, e o que `main` retornar vai para `exit`, que chama o `_exit` do projeto (`platform/_exit.c`). Um teste que termina por `RV32_PASS()` ou `RV32_FAIL()` escreve o mailbox e salta direto para o `rv32_wait_restart`, sem passar por `_exit`.
+4. Chama `main(0, 0)` com `jal`, e o que `main` retornar vai para `exit`, que chama o `_exit` do projeto (`platforms/internal-mem/runtime/_exit.c`). Um teste que termina por `RV32_PASS()` ou `RV32_FAIL()` escreve o mailbox e salta direto para o `rv32_wait_restart`, sem passar por `_exit`.
 
 ## Registradores de propósito geral no momento em que `main()` roda
 

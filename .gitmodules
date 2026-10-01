@@ -1,0 +1,3 @@
+[submodule "tools/Tools"]
+	path = tools/Tools
+	url = https://github.com/insper-riscv/Tools.git

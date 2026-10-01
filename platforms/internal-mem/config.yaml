@@ -1,6 +1,6 @@
 # Configuration for the RISC-V test build/run pipeline.
 #
-# The "real" side is wired to ../tests/FPGA/core/quartus
+# The "real" side is wired to ../TopLevel/platforms/internal-mem/quartus
 # (core_fpga_test.qpf) — the only working core + Quartus project on
 # this workstation. Lines still marked "<<< ADJUST" depend on things
 # that vary per machine/runner (which JTAG cable, which self-hosted
@@ -15,7 +15,7 @@ toolchain:
   # The platform (memory map, crt0) is one GCC specs file. Tests link
   # against the toolchain's own picolibc, crt0 and picolibc.ld: this
   # project has no crt0 and no linker script of its own.
-  specs: rv32im-fpga.specs
+  specs: ../TopLevel/platforms/internal-mem/runtime/rv32im-fpga.specs
 
 isa:
   base: i                    # always implied, never written in a test's header
@@ -100,36 +100,32 @@ memory:
   go_flag_addr: 0x0002FFF8
 
 paths:
-  include_dir: tools/riscv_build/include
   # The platform's own parts of the runtime, compiled into every test:
   # the _exit the toolchain's crt0 ends in, and the write function of
   # stdout (a buffer in RAM the host reads over JTAG).
   sources:
-    - platform/_exit.c
-    - platform/stdio.c
-  build_dir: build
-  c_dir: c
-  asm_dir: asm
+    - ../TopLevel/platforms/internal-mem/runtime/_exit.c
+    - ../TopLevel/platforms/internal-mem/runtime/stdio.c
   # The fixed, shared bootloader (see boot_rom.S's own header comment)
   # — built ONCE (not per test) into boot_rom.elf/.hex/.mif. It only
   # clears the fixed words and jumps to FLASH_BASE, where the crt0 is,
   # and holds rv32_wait_restart.
-  boot_rom: platform/boot_rom.S
-  boot_rom_linker_script: platform/boot_rom.ld
+  boot_rom: ../TopLevel/platforms/internal-mem/runtime/boot_rom.S
+  boot_rom_linker_script: ../TopLevel/platforms/internal-mem/runtime/boot_rom.ld
 
 # Only needed by `riscv-tools freq-sweep` (Fmax search). The PLL has
 # three outputs (clk_if/clk_idexmem/clk_wb), one frequency in three
 # phases 0/120/240 degrees; the sweep rewrites all three together.
 # Path is relative to this project's root (RV32IM's root is one level up).
 freq_sweep:
-  pll_file: ../src/PLL/pll_0002.v
+  pll_file: ../TopLevel/platforms/internal-mem/pll/pll_0002.v
   phase_count: 3
 
 quartus:
   # Points at RV32IM's real project — this repo (RISC-V-Workstation-
   # Tests) is vendored as RV32IM's own Tests/ submodule, so RV32IM's
   # root is one level up from this project's own root.
-  project_dir: ../tests/FPGA/core/quartus
+  project_dir: ../TopLevel/platforms/internal-mem/quartus
   project_name: core_fpga_test                     # core_fpga_test.qpf/.qsf
   sof_file: output_files/core_fpga_test.sof         # relative to project_dir
   # Path (relative to project_dir) the FLASH IP reads its initial
@@ -239,7 +235,7 @@ sim:
     - ../Core/I/ExtenderImm.vhd
     - ../Core/I/ExtenderRAM.vhd
     - ../Core/I/StoreManager.vhd
-    - ../src/clk_gen_3way.vhd
+    - ../TopLevel/platforms/internal-mem/rtl/clk_gen_3way.vhd
     - ../Core/common/control_unit.vhd
     - ../Core/common/bubble_mux.vhd
     - ../Core/common/forwarding_unit.vhd
@@ -259,8 +255,13 @@ sim:
     - ../Core/common/reg_EX_MEM.vhd
     - ../Core/common/reg_MEM_WB.vhd
     - ../Core/cores/rv32im_pipeline_core.vhd
-    - ../src/rv32i3stage_core_sim_test.vhd
-  test_module: tools.riscv_build.sim.test_c_program
+    - ../TopLevel/platforms/internal-mem/rtl/rv32i3stage_core_sim_test.vhd
+  # The cocotb testbench of the top lives in this repository; it is found
+  # through python_path, which names it relative to the project that extends
+  # this config.
+  test_module: testbench.test_c_program
+  python_path:
+    - ../TopLevel/platforms/internal-mem
   ghdl_std: "08"
   # ROM_simulation reads its program image via a VHDL generic (a
   # file-open process inside the VHDL itself), not sim_runner's own
@@ -292,6 +293,6 @@ sim:
 # address out of the link (see rv32im-fpga.specs).
 emulator:
   sources:
-    - platform/spike_exit.S
+    - ../TopLevel/platforms/internal-mem/runtime/spike_exit.S
   gcc_flags:
     - -DRV32_SPIKE

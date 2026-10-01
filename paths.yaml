@@ -1,0 +1,19 @@
+# Every file path this repository's configuration references, checked by
+#   uv run riscv-tools --root . check-paths --manifest paths.yaml
+#
+# The platform configs are written relative to the project that runs the tests
+# (../Core, ../TopLevel/...): from this root, `..` holds the sibling checkouts too,
+# so `base: .` resolves them as that project would.
+references:
+  - {name: sim sources, file: platforms/internal-mem/config.yaml, yaml: sim.vhdl_sources, base: .}
+  - {name: hardware-top sim sources, file: platforms/internal-mem/config.fpga-sim.yaml, yaml: sim.vhdl_sources, base: .}
+  - {name: sim python_path, file: platforms/internal-mem/config.yaml, yaml: sim.python_path, base: .}
+  - {name: runtime sources, file: platforms/internal-mem/config.yaml, yaml: paths.sources, base: .}
+  - {name: boot ROM, file: platforms/internal-mem/config.yaml, yaml: paths.boot_rom, base: .}
+  - {name: boot ROM linker script, file: platforms/internal-mem/config.yaml, yaml: paths.boot_rom_linker_script, base: .}
+  - {name: toolchain specs, file: platforms/internal-mem/config.yaml, yaml: toolchain.specs, base: .}
+  - {name: Spike stand-in, file: platforms/internal-mem/config.yaml, yaml: emulator.sources, base: .}
+  - {name: PLL for freq-sweep, file: platforms/internal-mem/config.yaml, yaml: freq_sweep.pll_file, base: .}
+  - {name: Quartus project dir, file: platforms/internal-mem/config.yaml, yaml: quartus.project_dir, base: .}
+  - {name: board project (core_fpga_test.qsf), file: platforms/internal-mem/quartus/core_fpga_test.qsf, pattern: '-name (?:VHDL_FILE|VERILOG_FILE|QIP_FILE|SDC_FILE) (\S+)'}
+  - {name: Quartus IPs of the PLL, paths: [platforms/internal-mem/pll/pll.qip, platforms/internal-mem/pll/pll_0002.qip]}

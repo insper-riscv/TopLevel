@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  toplevel:
+    # Needs no hardware and no Quartus license (GHDL is open source).
+    # insper-riscv/Infra's toolchain image has GHDL and uv on PATH.
+    runs-on: ubuntu-26.04
+    container:
+      image: ghcr.io/insper-riscv/infra-toolchain:latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Checkout Core and Memory (the platform wires them)
+        # paths.yaml, platform.yaml and the Makefile name ../Core and ../Memory,
+        # siblings of this checkout.
+        run: |
+          rm -rf ../Core ../Memory
+          git clone --depth 1 https://github.com/insper-riscv/Core.git ../Core
+          git clone --depth 1 https://github.com/insper-riscv/Memory.git ../Memory
+
+      - name: Install Python dependencies (riscv-tools from tools/Tools, + its sim extra)
+        run: uv sync
+
+      - name: Every referenced path exists
+        run: make paths
+
+      - name: Every copy of the memory map agrees with platform.yaml
+        run: make memory-map
+
+      - name: The simulation top builds (GHDL)
+        run: make check
+
+      - name: Upload waveforms
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: waveforms
+          path: "**/*.ghw"
+          if-no-files-found: ignore

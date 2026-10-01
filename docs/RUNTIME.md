@@ -21,7 +21,7 @@ riscv32-unknown-elf-gcc --specs=picolibc.specs -print-file-name=crt0-hosted.o
 
 ## 2. O arquivo de plataforma
 
-`rv32im-fpga.specs`, na raiz do repositório, é um arquivo de especificação do GCC. Ele inclui o `picolibc.specs` e acrescenta só o que é deste hardware:
+`rv32im-fpga.specs`, em `platforms/internal-mem/runtime/`, é um arquivo de especificação do GCC. Ele inclui o `picolibc.specs` e acrescenta só o que é deste hardware:
 
 ```
 %include <picolibc.specs>
@@ -45,7 +45,7 @@ Fora do `riscv-tools`, o mesmo arquivo serve a qualquer compilação:
 
 ```bash
 riscv32-unknown-elf-gcc -march=rv32im -mabi=ilp32 -Os --specs=rv32im-fpga.specs \
-    programa.c platform/_exit.c -o programa.elf
+    programa.c platforms/internal-mem/runtime/_exit.c -o programa.elf
 ```
 
 ## 3. O que o runtime entrega
@@ -67,7 +67,7 @@ O `memcpy` desta build da picolibc é byte a byte (`lbu` da FLASH, `sb` na RAM),
 
 ## 4. Os arquivos do projeto
 
-Em `platform/`:
+Em `platforms/internal-mem/runtime/`:
 
 | Arquivo | Papel |
 | :--- | :--- |
@@ -94,7 +94,7 @@ O `printf` completo (com suporte a `double`) custa cerca de 12 KB dos 30 KB da F
 
 ## 6. O Spike
 
-O programa de um teste termina no `rv32_wait_restart`, que no hardware é código da BOOT_ROM, num endereço fixo, e a imagem do teste não tem nada lá. Para o Spike, o ELF é montado à parte, com `-DRV32_SPIKE` (que tira o endereço fixo do link) e com `platform/spike_exit.S`, que define o `rv32_wait_restart` como código comum (o mailbox traduzido para HTIF, onde o Spike para). `tohost` e `fromhost` são símbolos absolutos nas palavras reservadas do topo da RAM, então o arquivo não ocupa espaço e todo endereço do ELF do Spike, e portanto de um golden, é o da imagem que o hardware carrega.
+O programa de um teste termina no `rv32_wait_restart`, que no hardware é código da BOOT_ROM, num endereço fixo, e a imagem do teste não tem nada lá. Para o Spike, o ELF é montado à parte, com `-DRV32_SPIKE` (que tira o endereço fixo do link) e com `platforms/internal-mem/runtime/spike_exit.S`, que define o `rv32_wait_restart` como código comum (o mailbox traduzido para HTIF, onde o Spike para). `tohost` e `fromhost` são símbolos absolutos nas palavras reservadas do topo da RAM, então o arquivo não ocupa espaço e todo endereço do ELF do Spike, e portanto de um golden, é o da imagem que o hardware carrega.
 
 ## 7. Limites conhecidos
 

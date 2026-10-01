@@ -15,14 +15,14 @@ O `riscv-tools sim` tem dois perfis. O padrão (`config.yaml`) simula um topo fe
 
 O núcleo (`rv32im_pipeline_core.vhd`) é o mesmo nos dois perfis.
 
-O PLL real (`src/PLL/pll.vhd`) envolve uma IP `altera_pll` cujo modelo de simulação é SystemVerilog, que o GHDL não roda. O arquivo `tests/FPGA/core/sim/pll_sim.vhd` do RV32IM tem a mesma entidade e as mesmas portas, com os parâmetros do `pll_0002.v`, e entra no lugar dele só na simulação: não faz parte do projeto Quartus.
+O PLL real (`platforms/internal-mem/pll/pll.vhd`) envolve uma IP `altera_pll` cujo modelo de simulação é SystemVerilog, que o GHDL não roda. O arquivo `tests/FPGA/core/sim/pll_sim.vhd` do RV32IM tem a mesma entidade e as mesmas portas, com os parâmetros do `pll_0002.v`, e entra no lugar dele só na simulação: não faz parte do projeto Quartus.
 
 ## 2. Pré-requisitos
 
 1. A biblioteca de simulação do Quartus: `altera_mf_components.vhd` e `altera_mf.vhd`, em `<Quartus>/eda/sim_lib/`. Ela vem com o Quartus, então este perfil roda onde o Quartus está instalado, e não em um runner hospedado do GitHub.
 2. A variável `QUARTUS_ROOTDIR` apontando para o diretório `quartus` da instalação (por exemplo `/opt/altera_lite/25.1std/quartus`).
 3. O GHDL, o GCC com picolibc e o Spike, como no sim padrão (a imagem `infra-toolchain` tem os três).
-4. O checkout do RV32IM ao lado, com `../src` e `../tests`, como no `sim.yml` e no `real.yml`.
+4. Os checkouts do Core, do Memory e do TopLevel ao lado do projeto de testes (`../Core`, `../Memory`, `../TopLevel`), como no `sim-fpga.yml`.
 
 ## 3. Como rodar
 
@@ -40,7 +40,7 @@ O workflow `sim-fpga.yml` faz o mesmo no runner self-hosted, dentro da imagem `i
 
 ## 4. O que a verificação faz
 
-O módulo de teste (`tools/riscv_build/sim/test_c_program.py`) é o mesmo dos dois perfis. Ele observa o barramento de escrita da RAM (`ram_wren`, `ram_en`, `ram_addr`, `ram_wdata`, `ram_byteena`), procura a escrita de PASS ou FAIL no mailbox e, em testes de memória, compara o conteúdo reconstruído da RAM com o golden. O perfil do topo de hardware só muda o que ele dirige, por variáveis de ambiente (`sim.env`): nome do clock e do reset, período, clock de amostragem (`pll_clk_idexmem`, o da RAM) e limite de ciclos.
+O módulo de teste (`platforms/internal-mem/testbench/test_c_program.py`) é o mesmo dos dois perfis. Ele observa o barramento de escrita da RAM (`ram_wren`, `ram_en`, `ram_addr`, `ram_wdata`, `ram_byteena`), procura a escrita de PASS ou FAIL no mailbox e, em testes de memória, compara o conteúdo reconstruído da RAM com o golden. O perfil do topo de hardware só muda o que ele dirige, por variáveis de ambiente (`sim.env`): nome do clock e do reset, período, clock de amostragem (`pll_clk_idexmem`, o da RAM) e limite de ciclos.
 
 ## 5. O que continua só no hardware
 

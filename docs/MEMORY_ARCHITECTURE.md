@@ -34,7 +34,7 @@ link "Correção definitiva" aponta pra este documento).
 Programado **uma única vez**, como parte do compile completo inicial do
 Quartus (`quartus_sh --flow compile` + `quartus_pgm`); nunca reescrito via
 JTAG depois disso, diferente de FLASH. Contém `boot_rom.S`
-(`platform/boot_rom.S`): o vetor de reset, que limpa
+(`platforms/internal-mem/runtime/boot_rom.S`): o vetor de reset, que limpa
 mailbox/go_flag/tohost/fromhost e o cabeçalho do `stdout` e salta pra
 FLASH, e o loop de espera/restart (`rv32_wait_restart`) que deixa
 `riscv-tools run` trocar de teste sem reprogramar a FPGA inteira; ver
