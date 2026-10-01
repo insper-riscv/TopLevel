@@ -1,0 +1,297 @@
+# Configuration for the RISC-V test build/run pipeline.
+#
+# The "real" side is wired to ../tests/FPGA/core/quartus
+# (core_fpga_test.qpf) — the only working core + Quartus project on
+# this workstation. Lines still marked "<<< ADJUST" depend on things
+# that vary per machine/runner (which JTAG cable, which self-hosted
+# runner labels) — see README.md.
+
+toolchain:
+  # The RISC-V GCC insper-riscv/Infra's GCC_SETUP.md builds into
+  # /opt/riscv-foundation (rv32im/ilp32, picolibc, one library variant),
+  # on PATH through its wrappers.
+  gcc: riscv32-unknown-elf-gcc
+  objcopy: riscv32-unknown-elf-objcopy
+  # The platform (memory map, crt0) is one GCC specs file. Tests link
+  # against the toolchain's own picolibc, crt0 and picolibc.ld: this
+  # project has no crt0 and no linker script of its own.
+  specs: rv32im-fpga.specs
+
+isa:
+  base: i                    # always implied, never written in a test's header
+  default_ext: ""            # no "// RV32_EXT:" header -> plain rv32i
+  # Canonical order standard RISC-V extension letters get sorted into
+  # before being appended to the base ISA string, so "// RV32_EXT: A,M"
+  # and "// RV32_EXT: M,A" both normalize to rv32ima.
+  canonical_order: "MAFDQLCBJTPVNH"
+
+memory:
+  # rv32im_pipeline_core now models 3 physical memories, matching a
+  # real SOC's hierarchy: BOOT_ROM (fixed — programmed once, never
+  # JTAG-rewritten per test; holds boot_rom.S, the shared bootloader),
+  # FLASH (this test's own "firmware" — .boot_header + .text, JTAG-
+  # rewritten per test the way ROM used to be) and RAM (real
+  # read/write data — the ONLY memory the MEM stage ever touches now;
+  # nothing reads data-side straight out of BOOT_ROM/FLASH anymore,
+  # see rv32im_pipeline_core.vhd's is_boot_rom_if/is_boot_rom_d).
+  #
+  # This replaces the old 2-region "Harvard modificado" address-
+  # comparison decode (is_rom_data) entirely — there's no MEM-stage
+  # ROM access left to decode. The IF stage still decodes BOOT_ROM vs
+  # FLASH by comparison (BOOT_ROM_SIZE_BYTES in
+  # rv32im_pipeline_core.vhd), but that's now the ONLY address
+  # decision left in the core.
+  #
+  # It also removes the old ROM_MEM duplicate IP instance entirely —
+  # that existed ONLY to give the (former) ROM a second read port for
+  # the MEM stage, working around Quartus Lite's DUAL_PORT +
+  # ENABLE_RUNTIME_MOD limitation (confirmed empirically via
+  # quartus_map). FLASH is genuinely single-port now, so that
+  # limitation no longer applies — and removing the duplicate is what
+  # brings total chip memory usage back under budget (the previous
+  # 160K+160K+128K=448K design exceeded the real 385K capacity by
+  # 63K; see the Fitter report's "Total block memory bits" line).
+  #
+  # boot_rom_base/boot_rom_words must match
+  # rv32im_pipeline_core.vhd's BOOT_ROM_SIZE_BYTES exactly (2K = 512
+  # words). rom_base/rom_words (FLASH) must start right where BOOT_ROM
+  # ends — both this and boot_rom.S's own hardcoded FLASH_BASE must
+  # agree. All .rodata is now copied to RAM at boot (boot_rom.S), not
+  # just small-data — see link.ld — since FLASH has no second read
+  # port for the MEM stage to read it from directly anymore.
+  #
+  # Sizes below (BOOT_ROM 2K / FLASH 30K / RAM 160K, ~192K total) are
+  # the SECOND cut — the first (66K/224K) genuinely worked in
+  # simulation but blew past the Cyclone V 5CEBA4F23's real, hard
+  # 308-M10K-block ceiling once FLASH_MEM (see quartus:
+  # rom_mem_instances below) doubled FLASH's cost: confirmed via a
+  # real `quartus_sh --flow compile` failure ("Error (170048): ...
+  # needs more than 308 to successfully fit"), not just bit-budget
+  # arithmetic (the 385K bit figure alone underestimates
+  # ENABLE_RUNTIME_MOD's real block overhead). This cut measures
+  # ~178 blocks (58% of the ceiling), leaving real margin.
+  #
+  # FLASH shrank to 30K (not 32K) specifically so RAM_BASE
+  # (rom_base + rom_words*4 = 0x800 + 0x7800) lands on a 4096-aligned
+  # address (0x8000) — required because every test's own asm mailbox
+  # write uses a bare `lui xN, 0x30` (no addi) to reach
+  # ram_base+ram_words*4-4, which only encodes an address whose low 12
+  # bits are zero. Growing BOOT_ROM instead (to force FLASH_BASE onto
+  # a 4K boundary) would've worked too but touches strictly more files
+  # for no benefit — this way BOOT_ROM/FLASH_BASE are untouched.
+  boot_rom_base: 0x00000000
+  boot_rom_words: 512     # BOOT_ROM (ips/ROM1PORT, repurposed): numwords_a=512, widthad_a=9
+  rom_base: 0x00000800
+  rom_words: 7680         # FLASH (ips/FLASH1PORT, new): numwords_a=7680, widthad_a=13
+  ram_base: 0x00008000
+  ram_words: 40960        # RAM1PORT: numwords_a=40960, widthad_a=16
+  # Last word of RAM, reserved for the PASS/FAIL mailbox. Fixed
+  # address hardcoded in BOTH boot_rom.S (which clears it on every
+  # _reset) and tools/riscv_build/include/rv32_test.h (which
+  # RV32_PASS()/RV32_FAIL() write to) — must stay in sync with
+  # link.ld's RAM length below and with each other; regenerate
+  # rv32_test.h via `riscv-tools generate-header` after changing this.
+  mailbox_addr: 0x0002FFFC
+  # Second-to-last word: the "go" flag boot_rom.S's restart loop
+  # polls. Writing a nonzero word here over JTAG (after loading a new
+  # FLASH image, without reprogramming the FPGA) makes the core jump
+  # back to _reset and run it — see the "no full recompile per test"
+  # note under quartus: below.
+  go_flag_addr: 0x0002FFF8
+
+paths:
+  include_dir: tools/riscv_build/include
+  # The platform's own parts of the runtime, compiled into every test:
+  # the _exit the toolchain's crt0 ends in, and the write function of
+  # stdout (a buffer in RAM the host reads over JTAG).
+  sources:
+    - platform/_exit.c
+    - platform/stdio.c
+  build_dir: build
+  c_dir: c
+  asm_dir: asm
+  # The fixed, shared bootloader (see boot_rom.S's own header comment)
+  # — built ONCE (not per test) into boot_rom.elf/.hex/.mif. It only
+  # clears the fixed words and jumps to FLASH_BASE, where the crt0 is,
+  # and holds rv32_wait_restart.
+  boot_rom: platform/boot_rom.S
+  boot_rom_linker_script: platform/boot_rom.ld
+
+# Only needed by `riscv-tools freq-sweep` (Fmax search). The PLL has
+# three outputs (clk_if/clk_idexmem/clk_wb), one frequency in three
+# phases 0/120/240 degrees; the sweep rewrites all three together.
+# Path is relative to this project's root (RV32IM's root is one level up).
+freq_sweep:
+  pll_file: ../src/PLL/pll_0002.v
+  phase_count: 3
+
+quartus:
+  # Points at RV32IM's real project — this repo (RISC-V-Workstation-
+  # Tests) is vendored as RV32IM's own Tests/ submodule, so RV32IM's
+  # root is one level up from this project's own root.
+  project_dir: ../tests/FPGA/core/quartus
+  project_name: core_fpga_test                     # core_fpga_test.qpf/.qsf
+  sof_file: output_files/core_fpga_test.sof         # relative to project_dir
+  # Path (relative to project_dir) the FLASH IP reads its initial
+  # contents from at synthesis time. build_fpga.py overwrites this
+  # file per test (BOOT_ROM has its own separate, one-time-only
+  # target below — it does NOT get touched by the per-test flow).
+  #
+  # NOT ips/FLASH1PORT/init.mif (that's just where the IP's own
+  # template copy lives) — flash1port.vhd's init_file generic is the
+  # literal string "./init.mif", resolved relative to quartus_sh's cwd
+  # (project_dir) at compile time, i.e. the top-level file here.
+  # Confirmed (back when this was still the "ROM" IP) by dumping it
+  # back over JTAG after overwriting the ips/ copy: the board kept
+  # running an unrelated stale program (word9 == 0xDEAD0137, a
+  # leftover from some earlier experiment) until this was pointed at
+  # the right file.
+  rom_mif_target: init.mif
+  # BOOT_ROM's own init file — written ONCE as part of the initial
+  # full compile (see paths.boot_rom/boot_rom_linker_script above),
+  # never touched by the per-test JTAG rewrite flow build_fpga.py
+  # normally uses (that flow only ever targets rom_mif_target/FLASH's
+  # JTAG instance below).
+  boot_rom_mif_target: boot_rom_init.mif
+  # jtag_hardware isn't configured here: the "USB-Blaster [<bus>-<port>]"
+  # suffix reflects USB topology and drifts across reboots/hub
+  # renumbering (seen firsthand: "[1-4]" became "[1-10]" between two
+  # runs on this same machine) — build_fpga.py detects it live via
+  # `jtagconfig` instead. jtag_device is the FPGA's own JTAG IDCODE,
+  # which doesn't change:
+  jtag_device: "@1: 5CE(BA4|FA4) (0x02B050DD)"
+  # Instance indices Quartus' In-System Memory Content Editor assigns
+  # to the FLASH/RAM debug taps, in declaration order in the project
+  # (see core_fpga_test.vhd: BOOT_ROM instantiated first (0), FLASH
+  # second (1), RAM third (2), FLASH_MEM last (3) — deliberately after
+  # RAM so it doesn't shift RAM's already-relied-on index). The
+  # mailbox lives inside RAM, so it shares RAM's instance index.
+  # BOOT_ROM has NO instance index here on purpose —
+  # build_fpga.py's per-test flow never JTAG-rewrites it, so nothing
+  # needs to address it live; it's only ever touched by the one-time
+  # full compile+program (see boot_rom_mif_target above). Verify
+  # against the real quartus_map/fitter report if this project's
+  # instantiation order in core_fpga_test.vhd ever changes.
+  #
+  # FLASH_MEM (index 3) is FLASH's own second physical copy, backing
+  # the MEM stage's data-read port (rv32im_pipeline_core.vhd
+  # flash_addr2) — needed for boot_rom.S's .data copy-loop to read
+  # FLASH as data at all (confirmed missing on real hardware: .bss/
+  # computation worked, but .data-initialized globals stayed zero).
+  # Quartus Lite can't do DUAL_PORT + ENABLE_RUNTIME_MOD on one IP
+  # (confirmed empirically), so this is a real physical duplicate,
+  # same recipe as the old ROM_MEM. Both must always carry the SAME
+  # content — rom_writer's mem_edit.write_full_multi writes both from
+  # this one list.
+  rom_mem_instances: [1, 3]
+  mailbox_mem_instance: 2
+  ram_mem_instance: 2
+  # Fallback only: build_fpga.py compiles + quartus_pgm's ONCE, then
+  # per test just JTAG-writes the new ROM image + pulses go_flag_addr
+  # (crt0.S jumps back to _start on its own — no recompile, no
+  # reprogram). This full flow — quartus_sh --flow compile, then
+  # quartus_pgm — only runs again if a test's mailbox never responds
+  # within its timeout (see build_tests.py's RV32_TIMEOUT_S header),
+  # as a recovery path.
+  program_wait_seconds: 15
+  # How often to poll the mailbox while waiting (see
+  # default_timeout_s / a test's own RV32_TIMEOUT_S header). Each poll
+  # is its own quartus_stp subprocess (a fresh JTAG/In-System Memory
+  # Editor session, opened and closed from scratch) — 0.5s let a
+  # 15s-timeout test issue up to ~30 of these back to back, and that
+  # volume of rapid session churn turned out to be unreliable on this
+  # board (a genuine PASS/FAIL already sitting in the mailbox was
+  # missed, reported as "no mailbox result" instead — see
+  # docs/DATA_HARVARD_BUG.md for how this was found and confirmed by
+  # reading the same mailbox manually, once, with a real gap, and
+  # getting the answer immediately). Fewer, more spaced-out polls
+  # trade a bit of detection latency for reliability.
+  poll_interval_seconds: 2.5
+  # Default per-test timeout if a test doesn't set RV32_TIMEOUT_S.
+  default_timeout_s: 15
+
+sim:
+  # Full-pipeline GHDL simulation top — NOT core_fpga_test (the real
+  # hardware top): that one instantiates the real Quartus ROM1PORT/
+  # RAM1PORT IP (altsyncram-based), which GHDL/cocotb can't peek
+  # inside. rv32i3stage_core_sim_test instantiates ROM_simulation/
+  # RAM_simulation instead — plain VHDL arrays cocotb can read.
+  toplevel: rv32i3stage_core_sim_test
+  # In dependency order (verified against tests/python/tests.json in
+  # this same repo, which already builds this exact toplevel from
+  # this exact source list for its instruction-level tests). Relative
+  # to this project's own root, not RV32IM's (see quartus.project_dir
+  # above for how the two relate).
+  vhdl_sources:
+    - ../Core/common/rv32i_ctrl_consts.vhd
+    - ../Core/common/rv32im_pipeline_types.vhd
+    - ../Core/common/genericRegister.vhd
+    - ../Core/common/genericAdder.vhd
+    - ../Core/common/genericAdderU.vhd
+    - ../Core/common/genericMux2x1.vhd
+    - ../Core/common/genericMux3x1.vhd
+    - ../Core/common/FlipFlop.vhd
+    - ../Core/I/ALU.vhd
+    - ../Core/common/RegFile.vhd
+    - ../Memory/sim/RAM_simulation.vhd
+    - ../Memory/sim/ROM_simulation.vhd
+    - ../Core/common/InstructionDecoder.vhd
+    - ../Core/I/ExtenderImm.vhd
+    - ../Core/I/ExtenderRAM.vhd
+    - ../Core/I/StoreManager.vhd
+    - ../src/clk_gen_3way.vhd
+    - ../Core/common/control_unit.vhd
+    - ../Core/common/bubble_mux.vhd
+    - ../Core/common/forwarding_unit.vhd
+    - ../Core/common/hazard_detection_unit.vhd
+    - ../Core/common/extendSigned.vhd
+    - ../Core/M/decoderM.vhd
+    - ../Core/M/m_decode.vhd
+    - ../Core/M/booth_multiplier_rv32.vhd
+    - ../Core/M/non_restoring_divider_rv32.vhd
+    - ../Core/M/mult.vhd
+    - ../Core/M/div.vhd
+    - ../Core/M/divu.vhd
+    - ../Core/M/multdiv.vhd
+    - ../Core/common/pc_fetch.vhd
+    - ../Core/common/reg_IF_ID.vhd
+    - ../Core/common/reg_ID_EX.vhd
+    - ../Core/common/reg_EX_MEM.vhd
+    - ../Core/common/reg_MEM_WB.vhd
+    - ../Core/cores/rv32im_pipeline_core.vhd
+    - ../src/rv32i3stage_core_sim_test.vhd
+  test_module: tools.riscv_build.sim.test_c_program
+  ghdl_std: "08"
+  # ROM_simulation reads its program image via a VHDL generic (a
+  # file-open process inside the VHDL itself), not sim_runner's own
+  # ROM_HEX env var — see rv32i3stage_core_sim_test.vhd (two separate
+  # ROM_simulation instances now, BOOT_ROM + FLASH). BOOT_ROM_FILE is
+  # substituted from sim_runner.run_suite's boot_rom_hex_path (built
+  # ONCE, see riscv_tools.boot_rom) — ROM_FILE (FLASH) still comes
+  # from each test's own {hex_path} like before. The
+  # boot_rom_addr_width/rom_addr_width/ram_addr_width generics size
+  # each memory array to match memory.boot_rom_words/rom_words/
+  # ram_words above — all three default to 2**9 (512 words) inside
+  # rv32i3stage_core_sim_test.vhd, too small for this project's real
+  # sizes.
+  parameters:
+    BOOT_ROM_FILE: "{boot_rom_hex_path}"
+    ROM_FILE: "{hex_path}"
+    # BOOT_ROM 2K (512 palavras, 9 bits) / FLASH 30K (7680 palavras,
+    # 13 bits) / RAM 160K (40960 palavras, 16 bits) -- ver memory:
+    # acima.
+    boot_rom_addr_width: "9"
+    rom_addr_width: "13"
+    ram_addr_width: "16"
+
+# Spike runs each test's own image, which starts at the crt0's _start.
+# On the hardware that image ends in rv32_wait_restart, a routine of the
+# separate boot ROM at 0x100, so Spike's ELF is built with a stand-in
+# for it (platform/spike_exit.S: the mailbox translated to HTIF, plus the
+# tohost/fromhost symbols) and with -DRV32_SPIKE, which leaves the fixed
+# address out of the link (see rv32im-fpga.specs).
+emulator:
+  sources:
+    - platform/spike_exit.S
+  gcc_flags:
+    - -DRV32_SPIKE
