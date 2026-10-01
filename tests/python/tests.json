@@ -1,0 +1,9 @@
+{
+    "clk_gen_3way": {
+        "toplevel": "clk_gen_3way",
+        "sources": [
+            "platforms/internal-mem/rtl/clk_gen_3way.vhd"
+        ],
+        "test_module": "tests.python.unittests.rtl.ClkGen3Way"
+    }
+}

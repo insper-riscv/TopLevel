@@ -9,9 +9,9 @@ P     := platforms/internal-mem
 SIM_VHDL := $(shell find ../Core/common ../Core/I ../Core/M ../Core/cores ../Memory/sim -name '*.vhd' | sort) \
             $(P)/rtl/clk_gen_3way.vhd $(P)/rtl/rv32i3stage_core_sim_test.vhd
 
-.PHONY: check memory-map paths all clean
+.PHONY: check memory-map paths test all clean
 
-all: paths memory-map check
+all: paths memory-map check test
 
 # GHDL analyzes and elaborates the simulation top. The ROM models open their image
 # when they are elaborated (default.hex, from their generic), so a one-word one is
@@ -27,6 +27,10 @@ check:
 # VHDL, the Quartus IPs) agrees with platform.yaml.
 memory-map:
 	uv run riscv-tools --root . check-memory-map --platform $(P)/platform.yaml
+
+# Per-entity cocotb tests of the RTL of the platform (`make test TEST=clk_gen_3way`).
+test:
+	uv run python tests/python/runner.py $(TEST)
 
 # Every path the configuration lists exists.
 paths:
