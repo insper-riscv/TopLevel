@@ -68,6 +68,20 @@ architecture behaviour of core_fpga_sdram is
 	signal sdram_ready   : std_logic;
 	signal mem_advance   : std_logic;
 
+	-- behind the interconnect: the SDRAM bridge, and the peripheral slots (4 is the JTAG UART)
+	signal m_addr    : std_logic_vector(31 downto 0);
+	signal m_wdata   : std_logic_vector(31 downto 0);
+	signal m_rdata   : std_logic_vector(31 downto 0);
+	signal m_byteena : std_logic_vector(3 downto 0);
+	signal m_rden    : std_logic;
+	signal m_wren    : std_logic;
+	signal m_ready   : std_logic;
+	signal p_addr    : std_logic_vector(7 downto 0);
+	signal p_wdata   : std_logic_vector(31 downto 0);
+	signal p_byteena : std_logic_vector(3 downto 0);
+	signal p_we, p_re : std_logic_vector(7 downto 0);
+	signal p_rdata   : std_logic_vector(8 * 32 - 1 downto 0) := (others => '0');
+
 	signal pll_clk_mem    : std_logic;
 	signal pll_clk_dram   : std_logic;
 	signal pll_clk_if     : std_logic;
@@ -196,12 +210,33 @@ begin
     );
 
 	-- SDRAM: the bridge (core clock), the arbiter and the controller (SDRAM clock), and the debug port
-	SDRAM_BRIDGE : entity work.sdram_cpu_bridge
+	-- the core's external port: bit 31 = 0 is the SDRAM, bit 31 = 1 a peripheral window
+	INTERCONNECT : entity work.ext_interconnect
 		port map (
-			clk_cpu => pll_clk_idexmem, rst_cpu => core_reset,
+			clk => pll_clk_idexmem, rst => core_reset,
 			addr => sdram_addr, wdata => sdram_wdata, byteena => sdram_byteena,
 			rden => sdram_rden, wren => sdram_wren, mem_advance => mem_advance,
 			ready => sdram_ready, rdata => sdram_rdata,
+			m_addr => m_addr, m_wdata => m_wdata, m_byteena => m_byteena,
+			m_rden => m_rden, m_wren => m_wren, m_ready => m_ready, m_rdata => m_rdata,
+			p_addr => p_addr, p_wdata => p_wdata, p_byteena => p_byteena,
+			p_we => p_we, p_re => p_re, p_rdata => p_rdata
+		);
+
+	-- the UART whose other end is a host on JTAG (0xC0000000)
+	JTAG_UART : entity work.jtag_uart_shell
+		port map (
+			clk => pll_clk_idexmem, rst => core_reset,
+			addr => p_addr, wdata => p_wdata, we => p_we(4), re => p_re(4),
+			rdata => p_rdata(32 * 4 + 31 downto 32 * 4)
+		);
+
+	SDRAM_BRIDGE : entity work.sdram_cpu_bridge
+		port map (
+			clk_cpu => pll_clk_idexmem, rst_cpu => core_reset,
+			addr => m_addr, wdata => m_wdata, byteena => m_byteena,
+			rden => m_rden, wren => m_wren, mem_advance => mem_advance,
+			ready => m_ready, rdata => m_rdata,
 			req_tog => a_req, ack_tog => a_ack, init_done => init_done,
 			c_we => a_we, c_addr => a_addr, c_wdata => a_wdata, c_be => a_be, c_rdata => a_rdata
 		);

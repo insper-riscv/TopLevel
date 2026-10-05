@@ -13,6 +13,12 @@ platform, so the golden's addresses are relative to memory.ram_base, the base of
 
 A write is complete when the memory stage is released (sdram_ready and mem_advance high on the
 sampling clock, the clock of the core).
+
+The JTAG UART at 0xC0000000 is read while the program runs, the way a host console does: a
+coroutine scans its 48-bit register back to back (instruction 1) and collects the bytes. At PASS
+what it collected must be what the program wrote to the stdout buffer in the SDRAM: the buffer
+holds at most 1024 bytes, so the UART stream must start with all of them, and be equal when the
+buffer did not overflow.
 """
 
 import os
@@ -23,6 +29,8 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from riscv_tools.mem_validator import compare_bytes, load_golden
 
+STDOUT_ADDR = 0x43FFFBE0
+STDOUT_SIZE = 1024
 MAILBOX_ADDR = 0x43FFFFFC
 MAILBOX_PASS = 1
 MAILBOX_FAIL = 2
@@ -68,6 +76,63 @@ async def model_bytes(dut, golden: dict[int, int]) -> dict[int, int]:
     return actual
 
 
+HALF_TCK_NS = 40
+
+
+async def uart_tck(dut, **states) -> None:
+    """One clock of the UART's Virtual JTAG instance with the given state flags high."""
+    for name in ("cdr", "sdr", "udr", "uir"):
+        getattr(dut, f"UART_STATE_{name.upper()}").value = 1 if states.get(name) else 0
+    dut.UART_TCK.value = 0
+    await Timer(HALF_TCK_NS, unit="ns")
+    dut.UART_TCK.value = 1
+    await Timer(HALF_TCK_NS, unit="ns")
+    dut.UART_TCK.value = 0
+    for name in ("cdr", "sdr", "udr", "uir"):
+        getattr(dut, f"UART_STATE_{name.upper()}").value = 0
+
+
+async def uart_scan(dut, push: int | None = None) -> list[int]:
+    """One scan of the UART register: sends a command, returns the bytes the core sent."""
+    value = 0 if push is None else (1 << 8) | push
+    await uart_tck(dut, cdr=True)
+    out = 0
+    for i in range(48):
+        dut.UART_TDI.value = (value >> i) & 1
+        await Timer(1, unit="ns")
+        out |= int(dut.UART_TDO.value) << i
+        await uart_tck(dut, sdr=True)
+    await uart_tck(dut, udr=True)
+    count = (out >> 32) & 7
+    return [(out >> (8 * i)) & 0xFF for i in range(count)]
+
+
+async def uart_console(dut, received: list[int], stop: list[bool]) -> None:
+    """Scans until told to stop, always finishing a scan: the bytes of an interrupted scan are lost."""
+    dut.UART_IR_IN.value = 1
+    await uart_tck(dut, uir=True)
+    while not stop[0]:
+        received.extend(await uart_scan(dut))
+
+
+async def check_uart_stream(dut, received: list[int]) -> None:
+    """At the end of a program: what the console read is what the program put in its stdout."""
+    for _ in range(12):               # the answers reach the console two scans late
+        received.extend(await uart_scan(dut))
+    first_word = (STDOUT_ADDR - SDRAM_BASE) // 4
+    length = await read_model_word(dut, first_word)
+    truncated = await read_model_word(dut, first_word + 1)
+    kept = min(length, STDOUT_SIZE)
+    data = bytearray()
+    for word in range((kept + 3) // 4):
+        data += (await read_model_word(dut, first_word + 2 + word)).to_bytes(4, "little")
+    expected = list(data[:kept])
+    got = received[:kept]
+    assert got == expected, f"UART stream {bytes(got)!r} differs from the stdout buffer {bytes(expected)!r}"
+    if not truncated:
+        assert len(received) == kept, f"UART stream has {len(received)} bytes, the buffer {kept}"
+
+
 @cocotb.test()
 async def test_program(dut) -> None:
     test_name = os.environ.get("TEST_NAME", "?")
@@ -94,6 +159,9 @@ async def test_program(dut) -> None:
             ticks[0] += 1
 
     cocotb.start_soon(count_ticks())
+    uart_bytes: list[int] = []
+    console_stop = [False]
+    console = cocotb.start_soon(uart_console(dut, uart_bytes, console_stop))
     while ticks[0] < TIMEOUT_CYCLES:
         await RisingEdge(sample_clock)
         cycles_used = ticks[0]
@@ -119,6 +187,9 @@ async def test_program(dut) -> None:
         if wdata == MAILBOX_PASS:
             dut._log.info("PASS")
             dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
+            console_stop[0] = True
+            await console
+            await check_uart_stream(dut, uart_bytes)
             if GOLDEN_PATH is not None:
                 golden = load_golden(GOLDEN_PATH)
                 actual = await model_bytes(dut, golden)

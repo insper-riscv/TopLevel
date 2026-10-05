@@ -51,6 +51,8 @@ sim:
     - ../Memory/external/sdram/sdram_jtag_core.vhd
     - ../Memory/external/sdram/sim/sdram_model.vhd
     - ../Memory/external/sdram/sim/sdram_system.vhd
+    - ../Memory/external/bus/jtag_uart.vhd
+    - ../Memory/external/bus/ext_interconnect.vhd
     - ../Core/common/InstructionDecoder.vhd
     - ../Core/I/ExtenderImm.vhd
     - ../Core/I/ExtenderRAM.vhd

@@ -45,3 +45,10 @@ set_max_delay -from $mem_clocks -to $tck_clocks 10
 set_max_delay -from $tck_clocks -to $mem_clocks 10
 set_min_delay -from $mem_clocks -to $tck_clocks -10
 set_min_delay -from $tck_clocks -to $mem_clocks -10
+
+# The JTAG UART meets the JTAG clock the same way, in the core clock domain: toggles through two flip-flops, and
+# the byte, the push flag and the answer hold from before a toggle flips until it is answered.
+set_max_delay -from $core_clocks -to $tck_clocks 10
+set_max_delay -from $tck_clocks -to $core_clocks 10
+set_min_delay -from $core_clocks -to $tck_clocks -10
+set_min_delay -from $tck_clocks -to $core_clocks -10
