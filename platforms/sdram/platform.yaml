@@ -1,21 +1,22 @@
-# The memory map of the platform on the board (Cyclone V 5CEBA4F23, memories
-# inside the FPGA): the source of truth `riscv-tools check-memory-map` checks
+# The memory map of the SDRAM platform: internal-mem's (the memories inside the FPGA) plus the board's 64 MB
+# SDRAM at 0x40000000, data only. It is internal-mem's map with one more region: the source of truth `riscv-tools check-memory-map` checks
 # every hand-written copy against.
 #
-#   uv run riscv-tools --root . check-memory-map --platform platforms/internal-mem/platform.yaml
+#   uv run riscv-tools --root . check-memory-map --platform platforms/sdram/platform.yaml
 #
 # Paths in `checks` are relative to the root of this repository; `../Core` and
 # `../Memory` are the sibling checkouts (the same layout as RV32IM's submodules).
 # The copies that the project running the tests owns (its config.yaml, the
 # generated rv32_test.h) are not here: its memory section is this platform's
 # config.yaml, extended, and the header is generated from it.
-platform: internal-mem
+platform: sdram
 profile: rv32im
 
 regions:
   - {name: BOOT_ROM, base: 0x00000000, size: 2K,   kind: rom, exec: true}
   - {name: FLASH,    base: 0x00000800, size: 30K,  kind: rom, exec: true}
   - {name: RAM,      base: 0x00008000, size: 160K, kind: ram}
+  - {name: SDRAM,    base: 0x40000000, size: 64M,  kind: ram}
 
 # Words at the top of RAM: the contract between the boot ROM, the program and
 # the host (platform/boot_rom.S clears them at every reset).
@@ -88,3 +89,9 @@ checks:
   - {name: FLASH_MEM IP widthad, file: ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
   - {name: RAM IP numwords, file: ../Memory/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: RAM.words}
   - {name: RAM IP widthad, file: ../Memory/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(RAM.words)}
+
+  # --- the SDRAM ------------------------------------------------------------
+  - {name: config sdram_base, file: platforms/sdram/config.yaml, yaml: memory.sdram_base, expect: SDRAM.base}
+  - {name: config sdram_words, file: platforms/sdram/config.yaml, yaml: memory.sdram_words, expect: SDRAM.words}
+  - {name: core SDRAM_BASE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: SDRAM.base}
+  - {name: core SDRAM_END_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_END_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: SDRAM.end}
