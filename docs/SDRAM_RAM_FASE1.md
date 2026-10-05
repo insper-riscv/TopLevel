@@ -315,3 +315,5 @@ de debug que disparava um comando, a contagem de preenchimento de 24 bits (Memor
 SDRAM um ciclo antes na placa, o padrão do mapa de memória que lia a SDRAM como a RAM, o boot ROM de
 outra plataforma (TopLevel), o mailbox obsoleto que dava PASS falso e a espera curta do preenchimento
 (Tools). O protocolo da porta de debug também está descrito em `docs/SDRAM_DEBUG.md` do Memory.
+A fase 2 (`SDRAM_RAM_FASE2.md`) soma a esta um barramento de periférico e uma UART por JTAG, para ver a
+saída do programa enquanto ele roda.
