@@ -1,0 +1,8 @@
+%include <picolibc.specs>
+%rename link rv32imfpga_picolibc_link
+
+*link:
+%(rv32imfpga_picolibc_link) --defsym=__flash=0x800 --defsym=__flash_size=30K --defsym=__ram=0x40000000 --defsym=__ram_size=64M-24-1032 %{!DRV32_SPIKE:--defsym=rv32_wait_restart=0x100}
+
+*startfile:
+crt0-hosted%O%s

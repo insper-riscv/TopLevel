@@ -88,3 +88,8 @@ checks:
   - {name: FLASH_MEM IP widthad, file: ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
   - {name: RAM IP numwords, file: ../Memory/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: RAM.words}
   - {name: RAM IP widthad, file: ../Memory/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(RAM.words)}
+
+  # --- the test programs' header (only in RV32IM's tree) ----------------------------------
+  - {name: Tests header RV32_RAM_BASE, file: ../Tests/tools/riscv_build/include/rv32_platform.h, optional: true, pattern: '#define RV32_RAM_BASE\s+(0x[0-9A-Fa-f]+)', expect: RAM.base}
+  - {name: Tests header RV32_RAM_END, file: ../Tests/tools/riscv_build/include/rv32_platform.h, optional: true, pattern: '#define RV32_RAM_END\s+(0x[0-9A-Fa-f]+)', expect: RAM.end}
+  - {name: Tests header RV32_STDOUT_BASE, file: ../Tests/tools/riscv_build/include/rv32_platform.h, optional: true, pattern: '#define RV32_STDOUT_BASE\s+(0x[0-9A-Fa-f]+)', expect: stdout.base}

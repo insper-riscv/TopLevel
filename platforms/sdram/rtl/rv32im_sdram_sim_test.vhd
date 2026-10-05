@@ -3,13 +3,14 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.rv32i_ctrl_consts.all;
 
--- Simulation top of the SDRAM platform: the core, the simulation memories of
--- internal-mem (BOOT_ROM, FLASH and RAM as VHDL arrays) and the SDRAM (bridge,
--- controller and chip model of the Memory repository) on its own 143 MHz clock.
+-- Simulation top of the SDRAM platform: the core, the BOOT_ROM and FLASH of internal-mem (VHDL
+-- arrays) and the SDRAM (bridge, arbiter, controller and chip model of the Memory repository) on
+-- its own 143 MHz clock. The SDRAM is the RAM: there is no other data memory.
 --
--- CLK is the base clock of the core (a clock generator divides it by three, as in
--- internal-mem). CLK_MEM is the SDRAM clock, driven by the testbench with no fixed
--- relation to CLK, as on the board. Both are driven by the testbench.
+-- CLK is the base clock of the core (a clock generator divides it by three, as in internal-mem).
+-- CLK_MEM is the SDRAM clock, driven by the testbench with no fixed relation to CLK, as on the
+-- board. DBG_WORD_ADDR and DBG_WORD_DATA read a word straight out of the chip model, which is how
+-- the testbench compares the content of the memory with a golden.
 entity rv32im_sdram_sim_test is
 	generic (
 	  BOOT_ROM_FILE : string := "default.hex";
@@ -21,7 +22,9 @@ entity rv32im_sdram_sim_test is
 	port (
     	CLK     : in  std_logic;
     	CLK_MEM : in  std_logic;
-		reset   : in  std_logic := '0'
+		reset   : in  std_logic := '0';
+		DBG_WORD_ADDR : in  std_logic_vector(23 downto 0) := (others => '0');
+		DBG_WORD_DATA : out std_logic_vector(31 downto 0)
   	);
 end entity;
 
@@ -38,10 +41,8 @@ architecture behaviour of rv32im_sdram_sim_test is
 
 	signal ram_addr : std_logic_vector(31 downto 0);
 	signal ram_wdata : std_logic_vector(31 downto 0);
-	signal ram_rdata : std_logic_vector(31 downto 0);
+	signal ram_rdata : std_logic_vector(31 downto 0) := (others => '0');   -- no RAM inside the FPGA
 	signal ram_en : std_logic;
-	signal ram_re_gated : std_logic;
-	signal ram_we_gated : std_logic;
 	signal ram_wren : std_logic;
 	signal ram_rden : std_logic;
 	signal ram_byteena : std_logic_vector(3 downto 0);
@@ -59,15 +60,11 @@ architecture behaviour of rv32im_sdram_sim_test is
 	signal pll_clk_idexmem: std_logic;
 	signal pll_clk_wb     : std_logic;
 
-	signal dbg_word_data  : std_logic_vector(31 downto 0);
 	signal dbg_refreshes  : std_logic_vector(31 downto 0);
 	signal dbg_init_ok    : std_logic;
 	signal sdram_init     : std_logic;
 
 begin
-
-	ram_re_gated <= ram_rden and ram_en;
-	ram_we_gated <= ram_wren and ram_en;
 
 	pll_inst : entity work.clk_gen_3way
     port map (
@@ -119,7 +116,7 @@ begin
 			rden => sdram_rden, wren => sdram_wren, mem_advance => mem_advance,
 			ready => sdram_ready, rdata => sdram_rdata,
 			init_done => sdram_init,
-			dbg_word_addr => (others => '0'), dbg_word_data => dbg_word_data,
+			dbg_word_addr => DBG_WORD_ADDR, dbg_word_data => DBG_WORD_DATA,
 			dbg_flip => '0', dbg_flip_addr => (others => '0'), dbg_flip_bit => (others => '0'),
 			dbg_refreshes => dbg_refreshes, dbg_init_ok => dbg_init_ok
 	);
@@ -145,19 +142,6 @@ begin
 			clk2 	=> pll_clk_idexmem,
 			re2 	=> flash_rden2,
 			data2	=> flash_data2
-	);
-
-	RAM : entity work.RAM_simulation
-		generic map (memoryAddrWidth => ram_addr_width)
-		port map(
-			addr 		=> ram_addr(31 downto 2),
-			mask 		=> ram_byteena,
-			clk		 	=> pll_clk_idexmem,
-			data_in 	=> ram_wdata,
-			reRAM 		=> ram_re_gated,
-			weRAM 		=> ram_we_gated,
-			eRAM 		=> ram_en,
-			data_out 	=> ram_rdata
 	);
 
 end architecture;

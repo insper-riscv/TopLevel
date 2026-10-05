@@ -86,7 +86,6 @@ set_global_assignment -name VHDL_FILE ../../../../Core/I/ExtenderImm.vhd
 set_global_assignment -name VHDL_FILE ../../internal-mem/rtl/Blinky.vhd
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/BOOT_ROM1PORT/boot_rom1port.qip
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/FLASH1PORT/flash1port.qip
-set_global_assignment -name QIP_FILE ../../../../Memory/ips/RAM1PORT/ram1port.qip
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/FLASH_MEM1PORT/flash_mem1port.qip
 set_global_assignment -name VHDL_FILE core_fpga_sdram.vhd
 
@@ -377,6 +376,10 @@ set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_ctrl.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_cpu_bridge.vhd
+set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_arbiter.vhd
+set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_dbg_master.vhd
+set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_jtag_core.vhd
+set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/hw/sdram_jtag_shell.vhd
 
 set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to "*sdram_platform_pll*|altera_pll:altera_pll_i*|*"
 set_instance_assignment -name PLL_AUTO_RESET OFF -to "*sdram_platform_pll*|altera_pll:altera_pll_i*|*"

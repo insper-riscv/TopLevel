@@ -1,8 +1,8 @@
-# The memory map of the SDRAM platform: internal-mem's (the memories inside the FPGA) plus the board's 64 MB
-# SDRAM at 0x40000000, data only. It is internal-mem's map with one more region: the source of truth `riscv-tools check-memory-map` checks
+# The memory map of the SDRAM platform: BOOT_ROM and FLASH inside the FPGA (the core fetches instructions from
+# them) and the board's 64 MB SDRAM as the RAM: the source of truth `riscv-tools check-memory-map` checks
 # every hand-written copy against.
 #
-#   uv run riscv-tools --root . check-memory-map --platform platforms/sdram/platform.yaml
+#   uv run riscv-tools --root . check-memory-map --platform platforms/internal-mem/platform.yaml
 #
 # Paths in `checks` are relative to the root of this repository; `../Core` and
 # `../Memory` are the sibling checkouts (the same layout as RV32IM's submodules).
@@ -15,17 +15,16 @@ profile: rv32im
 regions:
   - {name: BOOT_ROM, base: 0x00000000, size: 2K,   kind: rom, exec: true}
   - {name: FLASH,    base: 0x00000800, size: 30K,  kind: rom, exec: true}
-  - {name: RAM,      base: 0x00008000, size: 160K, kind: ram}
-  - {name: SDRAM,    base: 0x40000000, size: 64M,  kind: ram}
+  - {name: RAM,      base: 0x40000000, size: 64M,  kind: ram}   # the SDRAM
 
 # Words at the top of RAM: the contract between the boot ROM, the program and
 # the host (platform/boot_rom.S clears them at every reset).
 reserved:
-  stdout:   {base: 0x0002FBE0, size: 1K+8}
-  tohost:   {base: 0x0002FFE8, size: 8}
-  fromhost: {base: 0x0002FFF0, size: 8}
-  go_flag:  {base: 0x0002FFF8, size: 4}
-  mailbox:  {base: 0x0002FFFC, size: 4}
+  stdout:   {base: 0x43FFFBE0, size: 1K+8}
+  tohost:   {base: 0x43FFFFE8, size: 8}
+  fromhost: {base: 0x43FFFFF0, size: 8}
+  go_flag:  {base: 0x43FFFFF8, size: 4}
+  mailbox:  {base: 0x43FFFFFC, size: 4}
 
 boot:
   entry: 0x00000800
@@ -39,46 +38,45 @@ checks:
   - {name: config boot_rom_words, file: platforms/internal-mem/config.yaml, yaml: memory.boot_rom_words, expect: BOOT_ROM.words}
   - {name: config rom_base, file: platforms/internal-mem/config.yaml, yaml: memory.rom_base, expect: FLASH.base}
   - {name: config rom_words, file: platforms/internal-mem/config.yaml, yaml: memory.rom_words, expect: FLASH.words}
-  - {name: config ram_base, file: platforms/internal-mem/config.yaml, yaml: memory.ram_base, expect: RAM.base}
-  - {name: config ram_words, file: platforms/internal-mem/config.yaml, yaml: memory.ram_words, expect: RAM.words}
-  - {name: config mailbox_addr, file: platforms/internal-mem/config.yaml, yaml: memory.mailbox_addr, expect: mailbox.base}
-  - {name: config go_flag_addr, file: platforms/internal-mem/config.yaml, yaml: memory.go_flag_addr, expect: go_flag.base}
+  - {name: config ram_base, file: platforms/sdram/config.yaml, yaml: memory.ram_base, expect: RAM.base}
+  - {name: config ram_words, file: platforms/sdram/config.yaml, yaml: memory.ram_words, expect: RAM.words}
+  - {name: config mailbox_addr, file: platforms/sdram/config.yaml, yaml: memory.mailbox_addr, expect: mailbox.base}
+  - {name: config go_flag_addr, file: platforms/sdram/config.yaml, yaml: memory.go_flag_addr, expect: go_flag.base}
   - {name: config sim boot_rom_addr_width, file: platforms/internal-mem/config.yaml, yaml: sim.parameters.boot_rom_addr_width, expect: clog2(BOOT_ROM.words)}
   - {name: config sim rom_addr_width, file: platforms/internal-mem/config.yaml, yaml: sim.parameters.rom_addr_width, expect: clog2(FLASH.words)}
-  - {name: config sim ram_addr_width, file: platforms/internal-mem/config.yaml, yaml: sim.parameters.ram_addr_width, expect: clog2(RAM.words)}
 
   # --- linker flags (rv32im-fpga.specs) ------------------------------------
-  - {name: specs __flash, file: platforms/internal-mem/runtime/rv32im-fpga.specs, pattern: '--defsym=__flash=(\S+)', expect: FLASH.base}
-  - {name: specs __flash_size, file: platforms/internal-mem/runtime/rv32im-fpga.specs, pattern: '--defsym=__flash_size=(\S+)', expect: FLASH.size}
-  - {name: specs __ram, file: platforms/internal-mem/runtime/rv32im-fpga.specs, pattern: '--defsym=__ram=(\S+)', expect: RAM.base}
+  - {name: specs __flash, file: platforms/sdram/runtime/rv32im-fpga.specs, pattern: '--defsym=__flash=(\S+)', expect: FLASH.base}
+  - {name: specs __flash_size, file: platforms/sdram/runtime/rv32im-fpga.specs, pattern: '--defsym=__flash_size=(\S+)', expect: FLASH.size}
+  - {name: specs __ram, file: platforms/sdram/runtime/rv32im-fpga.specs, pattern: '--defsym=__ram=(\S+)', expect: RAM.base}
   # The linker's RAM stops where the reserved words begin.
-  - {name: specs __ram_size, file: platforms/internal-mem/runtime/rv32im-fpga.specs, pattern: '--defsym=__ram_size=(\S+)', expect: stdout.base - RAM.base}
-  - {name: specs rv32_wait_restart, file: platforms/internal-mem/runtime/rv32im-fpga.specs, pattern: 'rv32_wait_restart=(\S+?)\s*\}?\s*$', expect: boot.wait_restart}
+  - {name: specs __ram_size, file: platforms/sdram/runtime/rv32im-fpga.specs, pattern: '--defsym=__ram_size=(\S+)', expect: stdout.base - RAM.base}
+  - {name: specs rv32_wait_restart, file: platforms/sdram/runtime/rv32im-fpga.specs, pattern: 'rv32_wait_restart=(\S+?)\s*\}?\s*$', expect: boot.wait_restart}
 
   # --- boot ROM ------------------------------------------------------------
-  - {name: boot_rom.ld origin, file: platforms/internal-mem/runtime/boot_rom.ld, pattern: 'boot_rom \(rx\) : ORIGIN = (\S+),', expect: BOOT_ROM.base}
-  - {name: boot_rom.ld length, file: platforms/internal-mem/runtime/boot_rom.ld, pattern: 'LENGTH = (\w+)\s*$', expect: BOOT_ROM.size}
-  - {name: boot_rom.ld RESET_RESERVED, file: platforms/internal-mem/runtime/boot_rom.ld, pattern: 'RESET_RESERVED = (\S+);', expect: boot.wait_restart}
-  - {name: boot_rom.S RAM end, file: platforms/internal-mem/runtime/boot_rom.S, pattern: '^\s*li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*$', expect: RAM.end}
-  - {name: boot_rom.S stdout header, file: platforms/internal-mem/runtime/boot_rom.S, pattern: 'li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*// stdout header', expect: stdout.base}
-  - {name: boot_rom.S FLASH_BASE, file: platforms/internal-mem/runtime/boot_rom.S, pattern: 'li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*// FLASH_BASE', expect: boot.entry}
-  - {name: boot_rom.S mailbox offset, file: platforms/internal-mem/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// mailbox', expect: mailbox.base - RAM.end}
-  - {name: boot_rom.S go flag offset, file: platforms/internal-mem/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// go flag', expect: go_flag.base - RAM.end}
-  - {name: boot_rom.S fromhost offset, file: platforms/internal-mem/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// fromhost', expect: fromhost.base - RAM.end}
-  - {name: boot_rom.S tohost offset, file: platforms/internal-mem/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// tohost', expect: tohost.base - RAM.end}
+  - {name: boot_rom.ld origin, file: platforms/sdram/runtime/boot_rom.ld, pattern: 'boot_rom \(rx\) : ORIGIN = (\S+),', expect: BOOT_ROM.base}
+  - {name: boot_rom.ld length, file: platforms/sdram/runtime/boot_rom.ld, pattern: 'LENGTH = (\w+)\s*$', expect: BOOT_ROM.size}
+  - {name: boot_rom.ld RESET_RESERVED, file: platforms/sdram/runtime/boot_rom.ld, pattern: 'RESET_RESERVED = (\S+);', expect: boot.wait_restart}
+  - {name: boot_rom.S RAM end, file: platforms/sdram/runtime/boot_rom.S, pattern: '^\s*li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*$', expect: RAM.end}
+  - {name: boot_rom.S stdout header, file: platforms/sdram/runtime/boot_rom.S, pattern: 'li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*// stdout header', expect: stdout.base}
+  - {name: boot_rom.S FLASH_BASE, file: platforms/sdram/runtime/boot_rom.S, pattern: 'li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*// FLASH_BASE', expect: boot.entry}
+  - {name: boot_rom.S mailbox offset, file: platforms/sdram/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// mailbox', expect: mailbox.base - RAM.end}
+  - {name: boot_rom.S go flag offset, file: platforms/sdram/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// go flag', expect: go_flag.base - RAM.end}
+  - {name: boot_rom.S fromhost offset, file: platforms/sdram/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// fromhost', expect: fromhost.base - RAM.end}
+  - {name: boot_rom.S tohost offset, file: platforms/sdram/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// tohost', expect: tohost.base - RAM.end}
 
   # --- runtime and Spike stand-in ------------------------------------------
-  - {name: _exit.c mailbox, file: platforms/internal-mem/runtime/_exit.c, pattern: '\*\(volatile unsigned int \*\)(0x[0-9A-Fa-f]+)u', expect: mailbox.base}
-  - {name: stdio.c STDOUT_BASE, file: platforms/internal-mem/runtime/stdio.c, pattern: '#define STDOUT_BASE (0x[0-9A-Fa-f]+)u', expect: stdout.base}
-  - {name: spike_exit.S tohost, file: platforms/internal-mem/runtime/spike_exit.S, pattern: '\.equ tohost, (\S+)', expect: tohost.base}
-  - {name: spike_exit.S fromhost, file: platforms/internal-mem/runtime/spike_exit.S, pattern: '\.equ fromhost, (\S+)', expect: fromhost.base}
-  - {name: spike_exit.S RAM end, file: platforms/internal-mem/runtime/spike_exit.S, pattern: '^\s*li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*$', expect: RAM.end}
-  - {name: spike_exit.S mailbox offset, file: platforms/internal-mem/runtime/spike_exit.S, pattern: '(-\d+)\(t0\)\s*// mailbox', expect: mailbox.base - RAM.end}
-  - {name: spike_exit.S tohost offset, file: platforms/internal-mem/runtime/spike_exit.S, pattern: '(-\d+)\(t0\)\s*// tohost', expect: tohost.base - RAM.end}
+  - {name: _exit.c mailbox, file: platforms/sdram/runtime/_exit.c, pattern: '\*\(volatile unsigned int \*\)(0x[0-9A-Fa-f]+)u', expect: mailbox.base}
+  - {name: stdio.c STDOUT_BASE, file: platforms/sdram/runtime/stdio.c, pattern: '#define STDOUT_BASE (0x[0-9A-Fa-f]+)u', expect: stdout.base}
+  - {name: spike_exit.S tohost, file: platforms/sdram/runtime/spike_exit.S, pattern: '\.equ tohost, (\S+)', expect: tohost.base}
+  - {name: spike_exit.S fromhost, file: platforms/sdram/runtime/spike_exit.S, pattern: '\.equ fromhost, (\S+)', expect: fromhost.base}
+  - {name: spike_exit.S RAM end, file: platforms/sdram/runtime/spike_exit.S, pattern: '^\s*li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*$', expect: RAM.end}
+  - {name: spike_exit.S mailbox offset, file: platforms/sdram/runtime/spike_exit.S, pattern: '(-\d+)\(t0\)\s*// mailbox', expect: mailbox.base - RAM.end}
+  - {name: spike_exit.S tohost offset, file: platforms/sdram/runtime/spike_exit.S, pattern: '(-\d+)\(t0\)\s*// tohost', expect: tohost.base - RAM.end}
 
   # --- VHDL of the core ----------------------------------------------------
   - {name: core BOOT_ROM_SIZE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'BOOT_ROM_SIZE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: BOOT_ROM.size}
-  - {name: core RAM_BASE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: '\bRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
+  - {name: core RAM_BASE_BYTES (the end of FLASH), file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: '\bRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: FLASH.end}
 
   # --- Quartus IPs (only in RV32IM's tree) ---------------------------------
   - {name: BOOT_ROM IP numwords, file: ../Memory/ips/BOOT_ROM1PORT/boot_rom1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: BOOT_ROM.words}
@@ -87,11 +85,13 @@ checks:
   - {name: FLASH IP widthad, file: ../Memory/ips/FLASH1PORT/flash1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
   - {name: FLASH_MEM IP numwords, file: ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: FLASH.words}
   - {name: FLASH_MEM IP widthad, file: ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
-  - {name: RAM IP numwords, file: ../Memory/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: RAM.words}
-  - {name: RAM IP widthad, file: ../Memory/ips/RAM1PORT/ram1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(RAM.words)}
 
-  # --- the SDRAM ------------------------------------------------------------
-  - {name: config sdram_base, file: platforms/sdram/config.yaml, yaml: memory.sdram_base, expect: SDRAM.base}
-  - {name: config sdram_words, file: platforms/sdram/config.yaml, yaml: memory.sdram_words, expect: SDRAM.words}
-  - {name: core SDRAM_BASE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: SDRAM.base}
-  - {name: core SDRAM_END_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_END_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: SDRAM.end}
+  # --- the SDRAM is the RAM: the core decodes it as its external data region -------------
+  - {name: core SDRAM_BASE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
+  - {name: core SDRAM_END_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_END_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.end}
+
+  # --- the testbench and the test programs' header (only in RV32IM's tree) -----------------
+  - {name: testbench MAILBOX_ADDR, file: platforms/sdram/testbench/test_c_program.py, pattern: '^MAILBOX_ADDR = (0x[0-9A-Fa-f]+)', expect: mailbox.base}
+  - {name: Tests header RV32_RAM_BASE, file: ../Tests/tools/riscv_build/include-sdram/rv32_platform.h, optional: true, pattern: '#define RV32_RAM_BASE\s+(0x[0-9A-Fa-f]+)', expect: RAM.base}
+  - {name: Tests header RV32_RAM_END, file: ../Tests/tools/riscv_build/include-sdram/rv32_platform.h, optional: true, pattern: '#define RV32_RAM_END\s+(0x[0-9A-Fa-f]+)', expect: RAM.end}
+  - {name: Tests header RV32_STDOUT_BASE, file: ../Tests/tools/riscv_build/include-sdram/rv32_platform.h, optional: true, pattern: '#define RV32_STDOUT_BASE\s+(0x[0-9A-Fa-f]+)', expect: stdout.base}

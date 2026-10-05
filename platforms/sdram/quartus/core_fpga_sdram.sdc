@@ -36,3 +36,12 @@ set_min_delay -from $core_clocks -to $mem_clocks  -10
 # the reset button and the LEDs are slow and asynchronous
 set_false_path -from [get_ports {FPGA_RESET_N}]
 set_false_path -to   [get_ports {LEDR[*]}]
+
+# The JTAG clock of the debug port meets the controller clock only in the debug core: two flip-flop synchronizers for
+# the toggles, and command and result buses that hold from before a toggle flips until it is answered. Bounded by a
+# delay shorter than the synchronizers' latency, no hold check (as for the core clocks above).
+set tck_clocks [get_clocks altera_reserved_tck]
+set_max_delay -from $mem_clocks -to $tck_clocks 10
+set_max_delay -from $tck_clocks -to $mem_clocks 10
+set_min_delay -from $mem_clocks -to $tck_clocks -10
+set_min_delay -from $tck_clocks -to $mem_clocks -10

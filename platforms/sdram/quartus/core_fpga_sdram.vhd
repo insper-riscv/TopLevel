@@ -3,10 +3,11 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.rv32i_ctrl_consts.all;
 
--- The core on the board with the SDRAM: internal-mem's memories (BOOT_ROM, FLASH, RAM, FLASH_MEM, in the
--- same order so the JTAG memory indices do not move) plus the SDRAM at 0x40000000, reached through the
--- bridge and the controller of the Memory repository. The core clock is 50 MHz; the controller runs on
--- the 142.857 MHz clock of the same PLL.
+-- The core on the board with the SDRAM as its RAM: BOOT_ROM, FLASH and FLASH_MEM (in internal-mem's order,
+-- so the JTAG memory indices keep their meaning, minus the RAM that is gone) inside the FPGA, and the SDRAM at
+-- 0x40000000 through the bridge, the arbiter and the controller of the Memory repository. The host reaches the
+-- SDRAM through the debug master and its Virtual JTAG shell, as a second master of the controller. The core
+-- clock is 50 MHz; the controller and the debug master run on the 142.857 MHz clock of the same PLL.
 entity core_fpga_sdram is
 	port (
 		CLOCK_50 : in std_logic;
@@ -50,13 +51,9 @@ architecture behaviour of core_fpga_sdram is
 	signal flash_rden2 : std_logic;
 	signal flash_data2 : std_logic_vector(31 downto 0);
 
-	-- RAM is addressed 0-based by the memory editor (see core_fpga_test.vhd in internal-mem)
-	constant RAM_BASE_WORD : unsigned(19 downto 0) := to_unsigned(16#00008000# / 4, 20);
-	signal ram_word_addr : unsigned(15 downto 0);
-
 	signal ram_addr : std_logic_vector(31 downto 0);
 	signal ram_wdata : std_logic_vector(31 downto 0);
-	signal ram_rdata : std_logic_vector(31 downto 0);
+	signal ram_rdata : std_logic_vector(31 downto 0) := (others => '0');   -- no RAM inside the FPGA
 	signal ram_en : std_logic;
 	signal ram_wren : std_logic;
 	signal ram_rden : std_logic;
@@ -78,6 +75,21 @@ architecture behaviour of core_fpga_sdram is
 	signal pll_locked     : std_logic;
 
 	signal core_reset : std_logic;
+
+	-- master A (the core's bridge) and master B (the debug master) of the arbiter, and the controller
+	signal a_req, a_ack, a_we : std_logic;
+	signal a_addr  : std_logic_vector(23 downto 0);
+	signal a_wdata, a_rdata : std_logic_vector(31 downto 0);
+	signal a_be    : std_logic_vector(3 downto 0);
+	signal b_req, b_ack, b_we : std_logic;
+	signal b_addr  : std_logic_vector(23 downto 0);
+	signal b_wdata, b_rdata : std_logic_vector(31 downto 0);
+	signal b_be    : std_logic_vector(3 downto 0);
+	signal cmd_tog, done_tog : std_logic;
+	signal d_op, d_be : std_logic_vector(3 downto 0);
+	signal d_addr, r_addr : std_logic_vector(23 downto 0);
+	signal d_data, r_data : std_logic_vector(31 downto 0);
+	signal r_status : std_logic_vector(7 downto 0);
 
 	-- SDRAM controller side
 	signal rst_async : std_logic;
@@ -172,20 +184,7 @@ begin
       q       => flash_data
     );
 
-	ram_word_addr <= resize(unsigned(ram_addr(21 downto 2)) - RAM_BASE_WORD, 16);
-
-	RAM : entity work.ram1port
-	 port map (
-		address => std_logic_vector(ram_word_addr),
-		byteena => ram_byteena,
-		clock   => pll_clk_idexmem,
-		data    => ram_wdata,
-		rden    => ram_rden and ram_en,
-		wren    => ram_wren and ram_en,
-		q       => ram_rdata
-	 );
-
-	-- instantiated after RAM so the JTAG index of RAM does not change
+	-- FLASH's second copy, for data reads of the FLASH by the memory stage (the boot code copies .data from it)
 	FLASH_MEM : entity work.flash_mem1port
     port map (
       address => flash_addr2(14 downto 2),
@@ -196,15 +195,42 @@ begin
       q       => flash_data2
     );
 
-	-- SDRAM: the bridge (core clock) and the controller (SDRAM clock)
+	-- SDRAM: the bridge (core clock), the arbiter and the controller (SDRAM clock), and the debug port
 	SDRAM_BRIDGE : entity work.sdram_cpu_bridge
 		port map (
 			clk_cpu => pll_clk_idexmem, rst_cpu => core_reset,
 			addr => sdram_addr, wdata => sdram_wdata, byteena => sdram_byteena,
 			rden => sdram_rden, wren => sdram_wren, mem_advance => mem_advance,
 			ready => sdram_ready, rdata => sdram_rdata,
-			req_tog => req_tog, ack_tog => ack_tog, init_done => init_done,
-			c_we => c_we, c_addr => c_addr, c_wdata => c_wdata, c_be => c_be, c_rdata => c_rdata
+			req_tog => a_req, ack_tog => a_ack, init_done => init_done,
+			c_we => a_we, c_addr => a_addr, c_wdata => a_wdata, c_be => a_be, c_rdata => a_rdata
+		);
+
+	SDRAM_ARBITER : entity work.sdram_arbiter
+		port map (
+			clk => pll_clk_mem, rst => rst_mem,
+			a_req_tog => a_req, a_ack_tog => a_ack, a_we => a_we, a_addr => a_addr,
+			a_wdata => a_wdata, a_be => a_be, a_rdata => a_rdata,
+			b_req_tog => b_req, b_ack_tog => b_ack, b_we => b_we, b_addr => b_addr,
+			b_wdata => b_wdata, b_be => b_be, b_rdata => b_rdata,
+			c_req_tog => req_tog, c_ack_tog => ack_tog, c_we => c_we, c_addr => c_addr,
+			c_wdata => c_wdata, c_be => c_be, c_rdata => c_rdata
+		);
+
+	SDRAM_DEBUG : entity work.sdram_dbg_master
+		port map (
+			clk => pll_clk_mem, rst => rst_mem,
+			cmd_tog => cmd_tog, done_tog => done_tog, op => d_op, be => d_be, addr => d_addr, data => d_data,
+			rsp_addr => r_addr, rsp_data => r_data, rsp_status => r_status,
+			init_done => init_done,
+			b_req_tog => b_req, b_ack_tog => b_ack, b_we => b_we, b_addr => b_addr,
+			b_wdata => b_wdata, b_be => b_be, b_rdata => b_rdata
+		);
+
+	SDRAM_JTAG : entity work.sdram_jtag_shell
+		port map (
+			cmd_tog => cmd_tog, op => d_op, be => d_be, addr => d_addr, data => d_data,
+			done_tog => done_tog, rsp_addr => r_addr, rsp_data => r_data, rsp_status => r_status
 		);
 
 	-- the controller is reset while the PLL is not locked or the button is pressed, released in
@@ -224,7 +250,7 @@ begin
 		-- the data pins go through one register in the IO cells (see the Quartus project); the clock
 		-- phase of the pin DRAM_CLK makes the read data arrive in time for the register without the
 		-- extra clock the simulation models for registered pins (found on the board, docs/SDRAM_BRINGUP.md)
-		generic map (CAPTURE_EXTRA => 0)
+		generic map (CAPTURE_EXTRA => 0, SYNC_REQ => false)
 		port map (
 			clk => pll_clk_mem, rst => rst_mem,
 			req_tog => req_tog, ack_tog => ack_tog, init_done => init_done,
