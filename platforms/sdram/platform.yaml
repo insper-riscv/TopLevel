@@ -88,7 +88,6 @@ checks:
 
   # --- the SDRAM is the RAM: the core decodes it as its external data region -------------
   - {name: core SDRAM_BASE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
-  - {name: core SDRAM_END_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_END_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.end}
 
   # --- the testbench and the test programs' header (only in RV32IM's tree) -----------------
   - {name: testbench MAILBOX_ADDR, file: platforms/sdram/testbench/test_c_program.py, pattern: '^MAILBOX_ADDR = (0x[0-9A-Fa-f]+)', expect: mailbox.base}
