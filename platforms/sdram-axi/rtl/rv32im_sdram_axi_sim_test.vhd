@@ -12,7 +12,7 @@ use work.rv32i_ctrl_consts.all;
 -- board. DBG_WORD_ADDR and DBG_WORD_DATA read a word straight out of the chip model, which is how
 -- the testbench compares the content of the memory with a golden.
 --
--- The core's external port goes through the AXI4-Lite interconnect of the Memory repository (the data
+-- The core's external port goes through the AXI4 interconnect of the Memory repository (the data
 -- cache and the router; docs/DCACHE_AXI.md there): bit 31 = 0 is the SDRAM, bit 31 = 1 a peripheral
 -- window, with the JTAG UART at 0xC0000000 and the cache's control at 0xF0000000. UART_* stand for the
 -- Virtual JTAG instance of the UART (see jtag_uart); the testbench drives them to read what the
@@ -79,10 +79,16 @@ architecture behaviour of rv32im_sdram_axi_sim_test is
 	signal m_wren    : std_logic;
 	signal m_ready   : std_logic;
 	signal m_advance : std_logic;
-	signal awvalid, awready, wvalid, wready, bvalid, bready, arvalid, arready, rvalid, rready : std_logic;
+	signal awvalid, awready, wvalid, wready, bvalid, bready, arvalid, arready, rvalid, rready, wlast, rlast : std_logic;
 	signal awaddr, wdata_a, araddr, rdata_a : std_logic_vector(31 downto 0);
+	signal awlen, arlen : std_logic_vector(7 downto 0);
+	signal awsize, arsize : std_logic_vector(2 downto 0);
+	signal awburst, arburst : std_logic_vector(1 downto 0);
 	signal wstrb : std_logic_vector(3 downto 0);
 	signal bresp, rresp : std_logic_vector(1 downto 0);
+	signal m_line : std_logic;
+	signal m_wdx, m_rdx : std_logic_vector(95 downto 0);
+	signal m_bex : std_logic_vector(11 downto 0);
 	signal p_addr    : std_logic_vector(7 downto 0);
 	signal p_wdata   : std_logic_vector(31 downto 0);
 	signal p_byteena : std_logic_vector(3 downto 0);
@@ -147,26 +153,31 @@ begin
 			addr => sdram_addr, wdata => sdram_wdata, byteena => sdram_byteena,
 			rden => sdram_rden, wren => sdram_wren, mem_advance => mem_advance,
 			ready => sdram_ready, rdata => sdram_rdata,
-			m0_awvalid => awvalid, m0_awready => awready, m0_awaddr => awaddr,
-			m0_wvalid => wvalid, m0_wready => wready, m0_wdata => wdata_a, m0_wstrb => wstrb,
+			m0_awvalid => awvalid, m0_awready => awready, m0_awaddr => awaddr, m0_awlen => awlen,
+			m0_awsize => awsize, m0_awburst => awburst,
+			m0_wvalid => wvalid, m0_wready => wready, m0_wdata => wdata_a, m0_wstrb => wstrb, m0_wlast => wlast,
 			m0_bvalid => bvalid, m0_bready => bready, m0_bresp => bresp,
-			m0_arvalid => arvalid, m0_arready => arready, m0_araddr => araddr,
-			m0_rvalid => rvalid, m0_rready => rready, m0_rdata => rdata_a, m0_rresp => rresp,
+			m0_arvalid => arvalid, m0_arready => arready, m0_araddr => araddr, m0_arlen => arlen,
+			m0_arsize => arsize, m0_arburst => arburst,
+			m0_rvalid => rvalid, m0_rready => rready, m0_rdata => rdata_a, m0_rresp => rresp, m0_rlast => rlast,
 			p_addr => p_addr, p_wdata => p_wdata, p_byteena => p_byteena,
 			p_we => p_we, p_re => p_re, p_rdata => p_rdata
 		);
 
-	-- the SDRAM end of the AXI4-Lite bus: a slave in front of the bridge of the SDRAM system
-	SDRAM_SLAVE : entity work.axil_slave_word_bridge
+	-- the SDRAM end of the AXI4 bus: a slave in front of the bridge of the SDRAM system
+	SDRAM_SLAVE : entity work.axi_slave_word_bridge
 		port map (
 			clk => pll_clk_idexmem, rst => reset,
-			s_awvalid => awvalid, s_awready => awready, s_awaddr => awaddr,
-			s_wvalid => wvalid, s_wready => wready, s_wdata => wdata_a, s_wstrb => wstrb,
+			s_awvalid => awvalid, s_awready => awready, s_awaddr => awaddr, s_awlen => awlen,
+			s_awsize => awsize, s_awburst => awburst,
+			s_wvalid => wvalid, s_wready => wready, s_wdata => wdata_a, s_wstrb => wstrb, s_wlast => wlast,
 			s_bvalid => bvalid, s_bready => bready, s_bresp => bresp,
-			s_arvalid => arvalid, s_arready => arready, s_araddr => araddr,
-			s_rvalid => rvalid, s_rready => rready, s_rdata => rdata_a, s_rresp => rresp,
+			s_arvalid => arvalid, s_arready => arready, s_araddr => araddr, s_arlen => arlen,
+			s_arsize => arsize, s_arburst => arburst,
+			s_rvalid => rvalid, s_rready => rready, s_rdata => rdata_a, s_rresp => rresp, s_rlast => rlast,
 			addr => m_addr, wdata => m_wdata, byteena => m_byteena, rden => m_rden, wren => m_wren,
-			mem_advance => m_advance, ready => m_ready, rdata => m_rdata
+			mem_advance => m_advance, ready => m_ready, rdata => m_rdata,
+			line => m_line, wdata_x => m_wdx, byteena_x => m_bex, rdata_x => m_rdx
 		);
 
 	UART : entity work.jtag_uart
@@ -187,6 +198,7 @@ begin
 			addr => m_addr, wdata => m_wdata, byteena => m_byteena,
 			rden => m_rden, wren => m_wren, mem_advance => m_advance,
 			ready => m_ready, rdata => m_rdata,
+			line => m_line, wdata_x => m_wdx, byteena_x => m_bex, rdata_x => m_rdx,
 			init_done => sdram_init,
 			dbg_word_addr => DBG_WORD_ADDR, dbg_word_data => DBG_WORD_DATA,
 			dbg_flip => '0', dbg_flip_addr => (others => '0'), dbg_flip_bit => (others => '0'),

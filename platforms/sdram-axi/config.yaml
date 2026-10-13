@@ -1,6 +1,6 @@
-# The SDRAM platform with the data cache and the AXI4-Lite external bus (Memory repository,
+# The SDRAM platform with the data cache and the AXI4 external bus (Memory repository,
 # docs/DCACHE_AXI.md): the core's external port goes through a 4 KB write-through data cache for the
-# SDRAM space, an AXI4-Lite master, a router and two AXI4-Lite slaves (the SDRAM and the peripheral
+# SDRAM space, an AXI4 master, a router and two AXI4 slaves (the SDRAM and the peripheral
 # window). The memory map is the one of the sdram platform. The cache writes every store through, so
 # the host, which reads and writes the SDRAM through the debug port behind the cache, sees what the
 # program wrote as soon as it wrote it; the last 4 KB of the SDRAM (the words the host shares with
@@ -37,10 +37,10 @@ sim:
     - ../Memory/external/sdram/sim/sdram_model.vhd
     - ../Memory/external/sdram/sim/sdram_system.vhd
     - ../Memory/external/bus/jtag_uart.vhd
-    - ../Memory/external/axi/axil_master_bridge.vhd
-    - ../Memory/external/axi/axil_slave_word_bridge.vhd
-    - ../Memory/external/axi/axil_slave_periph_bank.vhd
-    - ../Memory/external/axi/axil_router.vhd
+    - ../Memory/external/axi/axi_master_bridge.vhd
+    - ../Memory/external/axi/axi_slave_word_bridge.vhd
+    - ../Memory/external/axi/axi_slave_periph_bank.vhd
+    - ../Memory/external/axi/axi_router.vhd
     - ../Memory/external/cache/dcache.vhd
     - ../Memory/external/axi/ext_axi_interconnect.vhd
     - ../Core/common/InstructionDecoder.vhd
