@@ -47,7 +47,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer, with_timeout
 from riscv_tools.mailbox import word_offset
 from riscv_tools.mem_validator import compare_bytes, load_golden
 
@@ -96,6 +96,67 @@ SIM_RESET_ACTIVE = int(os.environ.get("SIM_RESET_ACTIVE", "1"))
 SIM_SAMPLE_CLOCK = os.environ.get("SIM_SAMPLE_CLOCK", SIM_CLOCK)
 TIMEOUT_CYCLES = int(os.environ.get("SIM_TIMEOUT_CYCLES", "200000"))
 
+UART_TX_EXPECTED = b"UART OK\r\n"
+UART_ECHO_EXPECTED = b"RX test\r\n"
+UART_BIT_TIME_NS = round(1_000_000_000 / 115_200)
+
+
+async def receive_uart_byte(uart_tx) -> int:
+    # Detecta o início do quadro 8N1.
+    await FallingEdge(uart_tx)
+
+    # Confere o centro do start bit.
+    await Timer(UART_BIT_TIME_NS // 2, unit="ns")
+    assert int(uart_tx.value) == 0, "UART start bit inválido"
+
+    value = 0
+
+    # Amostra os oito bits no centro, LSB primeiro.
+    for bit_index in range(8):
+        await Timer(UART_BIT_TIME_NS, unit="ns")
+        value |= int(uart_tx.value) << bit_index
+
+    # Amostra o stop bit.
+    await Timer(UART_BIT_TIME_NS, unit="ns")
+    assert int(uart_tx.value) == 1, "UART stop bit inválido"
+
+    return value
+
+
+async def receive_uart_message(
+    uart_tx,
+    byte_count: int = len(UART_TX_EXPECTED),
+) -> bytes:
+    received = bytearray()
+
+    for _ in range(byte_count):
+        received.append(await receive_uart_byte(uart_tx))
+
+    return bytes(received)
+
+
+async def send_uart_byte(uart_rx, value: int) -> None:
+    # Start bit.
+    uart_rx.value = 0
+    await Timer(UART_BIT_TIME_NS, unit="ns")
+
+    # Oito bits de dados, LSB primeiro.
+    for bit_index in range(8):
+        uart_rx.value = (value >> bit_index) & 1
+        await Timer(UART_BIT_TIME_NS, unit="ns")
+
+    # Stop bit.
+    uart_rx.value = 1
+    await Timer(UART_BIT_TIME_NS, unit="ns")
+
+
+async def send_uart_message(uart_rx, message: bytes) -> None:
+    # Mantém a linha ociosa antes do primeiro start bit.
+    uart_rx.value = 1
+    await Timer(UART_BIT_TIME_NS, unit="ns")
+
+    for value in message:
+        await send_uart_byte(uart_rx, value)
 
 @cocotb.test()
 async def test_program(dut) -> None:
@@ -106,7 +167,21 @@ async def test_program(dut) -> None:
     reset = getattr(dut, SIM_RESET)
     sample_clock = getattr(dut, SIM_SAMPLE_CLOCK)
     cocotb.start_soon(Clock(clock, SIM_CLOCK_PERIOD_NS, unit="ns").start())
+    uart_capture_task = None
+    uart_drive_task = None
+    uart_expected = None
 
+    if test_name == "uart-tx":
+        uart_expected = UART_TX_EXPECTED
+
+    elif test_name == "uart-echo":
+        uart_expected = UART_ECHO_EXPECTED
+        dut.UART_RX.value = 1
+
+    if uart_expected is not None:
+        uart_capture_task = cocotb.start_soon(
+            receive_uart_message(dut.UART_TX, len(uart_expected))
+        )
     cycles_used = 0
     # {RAM-relative byte address: byte value} — updated on every RAM
     # write seen on the bus, honoring ram_byteena the same way
@@ -120,7 +195,10 @@ async def test_program(dut) -> None:
     reset.value = SIM_RESET_ACTIVE
     await ClockCycles(clock, 5)
     reset.value = 1 - SIM_RESET_ACTIVE
-
+    if test_name == "uart-echo":
+        uart_drive_task = cocotb.start_soon(
+            send_uart_message(dut.UART_RX, UART_ECHO_EXPECTED)
+        )
     for _ in range(TIMEOUT_CYCLES):
         await RisingEdge(sample_clock)
         cycles_used += 1
@@ -165,6 +243,19 @@ async def test_program(dut) -> None:
 
         mailbox = wdata
         if mailbox == MAILBOX_PASS:
+            if uart_drive_task is not None:
+                await with_timeout(uart_drive_task, 1, "ms")
+
+            if uart_capture_task is not None:
+                received = await with_timeout(uart_capture_task, 1, "ms")
+
+                if received != uart_expected:
+                    raise AssertionError(
+                        f"UART TX incorreto: esperado {uart_expected!r}, "
+                        f"recebido {received!r}"
+                    )
+
+                dut._log.info(f"UART TX recebido: {received!r}")
             dut._log.info("PASS")
             dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
             if GOLDEN_PATH is not None:

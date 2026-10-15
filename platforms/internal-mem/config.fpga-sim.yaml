@@ -90,4 +90,10 @@ sim:
     - ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd
     - ../Memory/ips/RAM1PORT/ram1port.vhd
     - ../TopLevel/platforms/internal-mem/pll/pll_sim.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/baudGen.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/uartRx.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/uartTx.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd
+    - ../Peripherals/UART/UART.vhd
     - ../TopLevel/platforms/internal-mem/quartus/core_fpga_test.vhd
