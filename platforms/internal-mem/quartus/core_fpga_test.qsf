@@ -90,6 +90,11 @@ set_global_assignment -name QIP_FILE ../../../../Memory/ips/FLASH1PORT/flash1por
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/RAM1PORT/ram1port.qip
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/FLASH_MEM1PORT/flash_mem1port.qip
 set_global_assignment -name VHDL_FILE core_fpga_test.vhd
+set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
+set_global_assignment -name VHDL_FILE ../../../../Core/M/div.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/decoderM.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/extendSigned.vhd
 
 #============================================================
 # FAMILY "Cyclone V"

@@ -7,3 +7,14 @@ logs/
 *.ghw
 *.vcd
 results.xml
+
+# Quartus-generated state (source project files and tracked MIFs stay visible)
+platforms/*/quartus/db/
+platforms/*/quartus/incremental_db/
+platforms/*/quartus/output_files/
+platforms/*/quartus/simulation/
+platforms/*/quartus/c5_pin_model_dump.txt
+platforms/*/quartus/*.qws
+platforms/*/quartus/*.jdi
+platforms/*/quartus/*.done
+platforms/*/quartus/*.smsg
