@@ -12,6 +12,8 @@ entity rv32i3stage_core_sim_test is
 	  -- callers (e.g. tests/python/tests.json) that don't set them.
 	  BOOT_ROM_FILE : string := "default.hex";
 	  ROM_FILE : string := "default.hex";
+	  -- Initial contents of the RAM, same format as ROM_FILE; empty: zero.
+	  RAM_FILE : string := "";
 	  -- Word-address width of ROM_simulation/RAM_simulation's internal
 	  -- memory array (depth = 2**width words) — all three default to
 	  -- 9 (512 words) inside ROM_simulation/RAM_simulation themselves,
@@ -140,7 +142,7 @@ begin
 	);
 
 	RAM : entity work.RAM_simulation
-		generic map (memoryAddrWidth => ram_addr_width)
+		generic map (memoryAddrWidth => ram_addr_width, RAM_FILE => RAM_FILE)
 		port map(
 			addr 		=> ram_addr(31 downto 2), -- word addressable
 			mask 		=> ram_byteena,
