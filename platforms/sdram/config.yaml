@@ -1,0 +1,103 @@
+# The SDRAM platform: the board's 64 MB SDRAM (32M x 16, 143 MHz) is THE RAM. It sits at
+# 0x40000000 and holds .data, .bss, the heap, the stack and the words the host shares with the
+# program (mailbox, tohost, fromhost, go flag, stdout). There is no RAM inside the FPGA: that
+# memory (the RAM1PORT IP of the Memory repository) is kept for a future L1 cache.
+#
+# The host reads and writes the SDRAM through the debug port (JTAG); the boot ROM and the FLASH
+# stay inside the FPGA (the core fetches instructions from them). Only what differs from
+# internal-mem is written here.
+extends: ../internal-mem/config.yaml
+
+toolchain:
+  specs: ../TopLevel/platforms/sdram/runtime/rv32im-fpga.specs
+
+memory:
+  ram_base: 0x40000000
+  ram_words: 16777216          # 64 MB
+  mailbox_addr: 0x43FFFFFC
+  go_flag_addr: 0x43FFFFF8
+
+paths:
+  sources:
+    - ../TopLevel/platforms/sdram/runtime/_exit.c
+    - ../TopLevel/platforms/sdram/runtime/stdio.c
+  boot_rom: ../TopLevel/platforms/sdram/runtime/boot_rom.S
+  boot_rom_linker_script: ../TopLevel/platforms/sdram/runtime/boot_rom.ld
+
+emulator:
+  sources:
+    - ../TopLevel/platforms/sdram/runtime/spike_exit.S
+
+sim:
+  toplevel: rv32im_sdram_sim_test
+  vhdl_sources:
+    - ../Core/common/rv32i_ctrl_consts.vhd
+    - ../Core/common/rv32im_pipeline_types.vhd
+    - ../Core/common/genericRegister.vhd
+    - ../Core/common/genericAdder.vhd
+    - ../Core/common/genericAdderU.vhd
+    - ../Core/common/genericMux2x1.vhd
+    - ../Core/common/genericMux3x1.vhd
+    - ../Core/common/FlipFlop.vhd
+    - ../Core/I/ALU.vhd
+    - ../Core/common/RegFile.vhd
+    - ../Memory/sim/RAM_simulation.vhd
+    - ../Memory/sim/ROM_simulation.vhd
+    - ../Memory/external/sdram/sdram_pkg.vhd
+    - ../Memory/external/sdram/sdram_ctrl.vhd
+    - ../Memory/external/sdram/sdram_cpu_bridge.vhd
+    - ../Memory/external/sdram/sdram_arbiter.vhd
+    - ../Memory/external/sdram/sdram_dbg_master.vhd
+    - ../Memory/external/sdram/sdram_jtag_core.vhd
+    - ../Memory/external/sdram/sim/sdram_model.vhd
+    - ../Memory/external/sdram/sim/sdram_system.vhd
+    - ../Memory/external/bus/jtag_uart.vhd
+    - ../Memory/external/bus/ext_interconnect.vhd
+    - ../Core/common/InstructionDecoder.vhd
+    - ../Core/I/ExtenderImm.vhd
+    - ../Core/I/ExtenderRAM.vhd
+    - ../Core/I/StoreManager.vhd
+    - ../TopLevel/platforms/internal-mem/rtl/clk_gen_3way.vhd
+    - ../Core/common/control_unit.vhd
+    - ../Core/common/bubble_mux.vhd
+    - ../Core/common/forwarding_unit.vhd
+    - ../Core/common/hazard_detection_unit.vhd
+    - ../Core/common/extendSigned.vhd
+    - ../Core/M/decoderM.vhd
+    - ../Core/M/m_decode.vhd
+    - ../Core/M/booth_multiplier_rv32.vhd
+    - ../Core/M/non_restoring_divider_rv32.vhd
+    - ../Core/M/mult.vhd
+    - ../Core/M/div.vhd
+    - ../Core/M/divu.vhd
+    - ../Core/M/multdiv.vhd
+    - ../Core/common/pc_fetch.vhd
+    - ../Core/common/reg_IF_ID.vhd
+    - ../Core/common/reg_ID_EX.vhd
+    - ../Core/common/reg_EX_MEM.vhd
+    - ../Core/common/reg_MEM_WB.vhd
+    - ../Core/cores/rv32im_pipeline_core.vhd
+    - ../TopLevel/platforms/sdram/rtl/rv32im_sdram_sim_test.vhd
+  test_module: testbench.test_c_program
+  python_path:
+    - ../TopLevel/platforms/sdram
+  # The testbench also drives the SDRAM clock (7 ns, no relation to the core clock), and the SDRAM's
+  # power-up wait (200 us) comes before the first access: ticks of CLK are counted for the timeout,
+  # so it is longer than internal-mem's.
+  env:
+    SIM_EXTRA_CLOCKS: "CLK_MEM:7"
+    SIM_SAMPLE_CLOCK: pll_clk_idexmem
+    SIM_TIMEOUT_CYCLES: "600000"
+
+quartus:
+  project_dir: ../TopLevel/platforms/sdram/quartus
+  project_name: core_fpga_sdram
+  sof_file: output_files/core_fpga_sdram.sof
+  # the host reaches the RAM (the SDRAM) through the debug port, not the memory editor
+  ram_backend: sdram_debug
+  # The memory editor sees only what is inside the FPGA: 0 BOOT_ROM, 1 FLASH, 2 FLASH_MEM (the second
+  # copy of the FLASH that the memory stage reads data from). There is no RAM instance: those
+  # indices are not used and must not name FLASH_MEM.
+  rom_mem_instances: [1, 2]
+  ram_mem_instance: null
+  mailbox_mem_instance: null
