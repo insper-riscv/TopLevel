@@ -95,6 +95,14 @@ SIM_RESET = os.environ.get("SIM_RESET", "reset")
 SIM_RESET_ACTIVE = int(os.environ.get("SIM_RESET_ACTIVE", "1"))
 SIM_SAMPLE_CLOCK = os.environ.get("SIM_SAMPLE_CLOCK", SIM_CLOCK)
 TIMEOUT_CYCLES = int(os.environ.get("SIM_TIMEOUT_CYCLES", "200000"))
+# More clocks the top has, "PORT:period_ns" separated by commas (for example the SDRAM
+# platform's CLK_MEM:7). They are driven for the whole test and need no reset of their own.
+EXTRA_CLOCKS = [
+    (name, int(period))
+    for name, period in (
+        item.split(":") for item in os.environ.get("SIM_EXTRA_CLOCKS", "").split(",") if item
+    )
+]
 
 
 @cocotb.test()
@@ -106,6 +114,8 @@ async def test_program(dut) -> None:
     reset = getattr(dut, SIM_RESET)
     sample_clock = getattr(dut, SIM_SAMPLE_CLOCK)
     cocotb.start_soon(Clock(clock, SIM_CLOCK_PERIOD_NS, unit="ns").start())
+    for extra_name, extra_period in EXTRA_CLOCKS:
+        cocotb.start_soon(Clock(getattr(dut, extra_name), extra_period, unit="ns").start())
 
     cycles_used = 0
     # {RAM-relative byte address: byte value} — updated on every RAM
