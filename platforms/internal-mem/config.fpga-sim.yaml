@@ -80,6 +80,7 @@ sim:
     - ../Core/M/multdiv.vhd
     - ../Core/Zicsr/csr_decode.vhd
     - ../Core/Zicsr/csr_file.vhd
+    - ../Core/Zicsr/trap_unit.vhd
     - ../Core/common/pc_fetch.vhd
     - ../Core/common/reg_IF_ID.vhd
     - ../Core/common/reg_ID_EX.vhd
