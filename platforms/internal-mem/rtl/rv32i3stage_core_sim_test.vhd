@@ -26,7 +26,9 @@ entity rv32i3stage_core_sim_test is
 	  -- tests) are unaffected.
 	  boot_rom_addr_width : natural := 9;
 	  rom_addr_width : natural := 9;
-	  ram_addr_width : natural := 9
+	  ram_addr_width : natural := 9;
+	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
+	  HAS_ZICSR : boolean := false
   	);
 	port (
     	CLK  : in  std_logic;
@@ -82,6 +84,7 @@ begin
     );
 
 	CORE : entity work.rv32im_pipeline_core
+		generic map (HAS_ZICSR => HAS_ZICSR)
 		port map (
 			clk          => pll_clk_idexmem,
 			reset 		=> reset,
