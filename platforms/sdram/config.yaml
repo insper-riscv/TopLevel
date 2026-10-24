@@ -89,6 +89,8 @@ sim:
     - ../Memory/external/sdram/sim/sdram_model.vhd
     - ../Memory/external/sdram/sim/sdram_system.vhd
     - ../Memory/external/bus/jtag_uart.vhd
+    - ../Memory/external/bus/hex_to_seg7.vhd
+    - ../Memory/external/bus/seg_display.vhd
     - ../Memory/external/bus/ext_interconnect.vhd
     - ../TopLevel/platforms/internal-mem/rtl/clk_gen_3way.vhd
     - ../TopLevel/platforms/sdram/rtl/rv32im_sdram_sim_test.vhd
@@ -104,7 +106,7 @@ sim:
   env:
     SIM_EXTRA_CLOCKS: "CLK_MEM:7"
     SIM_SAMPLE_CLOCK: pll_clk_idexmem
-    SIM_TIMEOUT_CYCLES: "600000"
+    SIM_TIMEOUT_CYCLES: "2000000"
 
 quartus:
   project_dir: ../TopLevel/platforms/sdram/quartus
