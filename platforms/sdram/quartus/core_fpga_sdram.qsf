@@ -373,6 +373,11 @@ set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_
 # the core is written in VHDL-2008
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_decode.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_file.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/trap_unit.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zifencei/fencei_unit.vhd
+set_global_assignment -name VHDL_FILE ../../../../Memory/external/cache/icache.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_ctrl.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_cpu_bridge.vhd
