@@ -25,7 +25,13 @@ entity rv32im_sdram_axi_sim_test is
 	  rom_addr_width : natural := 9;
 	  ram_addr_width : natural := 9;
 	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
-	  HAS_ZICSR : boolean := false
+	  HAS_ZICSR : boolean := false;
+	  -- Zifencei no core (FENCE.I invalida a cache de instrucoes); false mantem o NOP.
+	  HAS_ZIFENCEI : boolean := false;
+	  -- cache de dados write-through (true) ou write-back (false); com write-back a FENCE.I pede o flush
+	  WRITE_THROUGH : boolean := true;
+	  -- Imagem de programa gravada na SDRAM no tempo zero (ver rv32im_sdram_sim_test)
+	  SDRAM_FILE : string := ""
   	);
 	port (
     	CLK     : in  std_logic;
@@ -105,6 +111,22 @@ architecture behaviour of rv32im_sdram_axi_sim_test is
 	signal dbg_init_ok    : std_logic;
 	signal sdram_init     : std_logic;
 
+	-- Busca de instrucao em SDRAM: cache de instrucoes no clock do IF; flush da cache de dados
+	signal ic_data   : std_logic_vector(31 downto 0);
+	signal ic_ready  : std_logic;
+	signal ic_sel    : std_logic;
+	signal ic_inval  : std_logic;
+	signal id_addr   : std_logic_vector(31 downto 0);
+	signal id_rden   : std_logic;
+	signal id_adv    : std_logic;
+	signal id_ready  : std_logic;
+	signal id_rdata  : std_logic_vector(31 downto 0);
+	signal id_line   : std_logic;
+	signal id_rdx    : std_logic_vector(95 downto 0);
+	signal dc_flush  : std_logic;
+	signal dc_done   : std_logic;
+	signal dc_busy   : std_logic;
+
 begin
 
 	pll_inst : entity work.clk_gen_3way
@@ -117,7 +139,7 @@ begin
     );
 
 	CORE : entity work.rv32im_pipeline_core
-		generic map (HAS_ZICSR => HAS_ZICSR)
+		generic map (HAS_ZICSR => HAS_ZICSR, HAS_ZIFENCEI => HAS_ZIFENCEI, HAS_DCACHE => not WRITE_THROUGH)
 		port map (
 			clk          => pll_clk_idexmem,
 			reset 		=> reset,
@@ -146,16 +168,33 @@ begin
 			sdram_wren    => sdram_wren,
 			sdram_rdata   => sdram_rdata,
 			sdram_ready   => sdram_ready,
-			mem_advance   => mem_advance
+			mem_advance   => mem_advance,
+
+			ic_data  => ic_data,
+			ic_ready => ic_ready,
+			ic_sel   => ic_sel,
+			ic_inval => ic_inval,
+			dc_flush => dc_flush,
+			dc_done  => dc_done
+	);
+
+	ICACHE : entity work.icache
+		port map (
+			clk => pll_clk_if, rst => reset,
+			addr => if_addr, sel => ic_sel, ready => ic_ready, data => ic_data,
+			invalidate => ic_inval,
+			d_addr => id_addr, d_rden => id_rden, d_advance => id_adv, d_ready => id_ready,
+			d_rdata => id_rdata, d_line => id_line, d_rdata_x => id_rdx
 	);
 
 	INTERCONNECT : entity work.ext_axi_interconnect
-		generic map (WRITE_THROUGH => true)
+		generic map (WRITE_THROUGH => WRITE_THROUGH)
 		port map (
 			clk => pll_clk_idexmem, rst => reset,
 			addr => sdram_addr, wdata => sdram_wdata, byteena => sdram_byteena,
 			rden => sdram_rden, wren => sdram_wren, mem_advance => mem_advance,
 			ready => sdram_ready, rdata => sdram_rdata,
+			flush => dc_flush, flush_done => dc_done, busy => dc_busy,
 			m0_awvalid => awvalid, m0_awready => awready, m0_awaddr => awaddr, m0_awlen => awlen,
 			m0_awsize => awsize, m0_awburst => awburst,
 			m0_wvalid => wvalid, m0_wready => wready, m0_wdata => wdata_a, m0_wstrb => wstrb, m0_wlast => wlast,
@@ -195,6 +234,7 @@ begin
 
 	-- the SDRAM and its chip model; the debug ports of the model stay unused here
 	SDRAM : entity work.sdram_system
+		generic map (INIT_FILE => SDRAM_FILE)
 		port map (
 			clk_mem => CLK_MEM, clk_cpu => pll_clk_idexmem,
 			rst_mem => reset,   rst_cpu => reset,
@@ -202,6 +242,8 @@ begin
 			rden => m_rden, wren => m_wren, mem_advance => m_advance,
 			ready => m_ready, rdata => m_rdata,
 			line => m_line, wdata_x => m_wdx, byteena_x => m_bex, rdata_x => m_rdx,
+			i_addr => id_addr, i_rden => id_rden, i_advance => id_adv, i_ready => id_ready,
+			i_rdata => id_rdata, i_line => id_line, i_rdata_x => id_rdx,
 			init_done => sdram_init,
 			dbg_word_addr => DBG_WORD_ADDR, dbg_word_data => DBG_WORD_DATA,
 			dbg_flip => '0', dbg_flip_addr => (others => '0'), dbg_flip_bit => (others => '0'),
