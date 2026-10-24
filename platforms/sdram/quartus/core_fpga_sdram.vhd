@@ -1,7 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.rv32i_ctrl_consts.all;
 
 -- The core on the board with the SDRAM as its RAM: BOOT_ROM, FLASH and FLASH_MEM (in internal-mem's order,
 -- so the JTAG memory indices keep their meaning, minus the RAM that is gone) inside the FPGA, and the SDRAM at
@@ -172,42 +171,42 @@ begin
 		end if;
 	end process;
 
-	CORE : entity work.rv32im_pipeline_core
-		generic map (HAS_ZICSR => true, HAS_ZIFENCEI => true)
+	CORE : entity work.cpu
+		generic map (has_m => true, has_zicsr => true, has_zifencei => true)
 		port map (
-			clk          => pll_clk_idexmem,
-			reset        => core_reset,
+			i_clk          => pll_clk_idexmem,
+			i_rst        => core_reset,
 
-			if_addr       => if_addr,
-			if_rden       => if_rden,
-			boot_rom_data => boot_rom_data,
-			flash_data    => flash_data,
+			o_if_addr       => if_addr,
+			o_if_rden       => if_rden,
+			i_boot_rom_data => boot_rom_data,
+			i_flash_data    => flash_data,
 
-			flash_addr2 => flash_addr2,
-			flash_rden2 => flash_rden2,
-			flash_data2 => flash_data2,
+			o_flash_addr2 => flash_addr2,
+			o_flash_rden2 => flash_rden2,
+			i_flash_data2 => flash_data2,
 
-			ram_addr    => ram_addr,
-			ram_wdata   => ram_wdata,
-			ram_rdata   => ram_rdata,
-			ram_en      => ram_en,
-			ram_wren    => ram_wren,
-			ram_rden    => ram_rden,
-			ram_byteena => ram_byteena,
+			o_ram_addr    => ram_addr,
+			o_ram_wdata   => ram_wdata,
+			i_ram_rdata   => ram_rdata,
+			o_ram_en      => ram_en,
+			o_ram_wren    => ram_wren,
+			o_ram_rden    => ram_rden,
+			o_ram_byteena => ram_byteena,
 
-			sdram_addr    => sdram_addr,
-			sdram_wdata   => sdram_wdata,
-			sdram_byteena => sdram_byteena,
-			sdram_rden    => sdram_rden,
-			sdram_wren    => sdram_wren,
-			sdram_rdata   => sdram_rdata,
-			sdram_ready   => sdram_ready,
-			mem_advance   => mem_advance,
+			o_sdram_addr    => sdram_addr,
+			o_sdram_wdata   => sdram_wdata,
+			o_sdram_byteena => sdram_byteena,
+			o_sdram_rden    => sdram_rden,
+			o_sdram_wren    => sdram_wren,
+			i_sdram_rdata   => sdram_rdata,
+			i_sdram_ready   => sdram_ready,
+			o_mem_advance   => mem_advance,
 
-			ic_data  => ic_data,
-			ic_ready => ic_ready,
-			ic_sel   => ic_sel,
-			ic_inval => ic_inval
+			i_ic_data  => ic_data,
+			i_ic_ready => ic_ready,
+			o_ic_sel   => ic_sel,
+			o_ic_inval => ic_inval
 	);
 
 	-- Instruction cache of the SDRAM: on the clock of the instruction memories, so that the

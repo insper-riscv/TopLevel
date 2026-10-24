@@ -59,30 +59,52 @@ set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name VERILOG_FILE ../pll/sdram_platform_pll.v
-set_global_assignment -name VHDL_FILE ../../../../Core/I/ALU.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/InstructionDecoder.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/RegFile.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/pc_fetch.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/bubble_mux.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/pipeline_types.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/opcode_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/funct3_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/funct7_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/alu_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/ext_imm_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/ext_ram_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/wb_sel_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/pc_src_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/mem_map_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/generic_register.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/adder.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/mux_2x1.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/mux_4x1.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/flip_flop.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/utils_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/I/alu.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/onehot_decoder.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/mux_tree.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_file.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/I/extender_imm.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/I/extender_ram.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/I/store_manager.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/control_unit.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/bubble_mux.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/forwarding_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/hazard_detection_unit.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_IF_ID.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_EX_MEM.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_MEM_WB.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/cores/rv32im_pipeline_core.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_ID_EX.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/rv32i_ctrl_consts.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/rv32im_pipeline_types.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/I/StoreManager.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/genericRegister.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/genericMux3x1.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/genericMux2x1.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/genericAdderU.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/genericAdder.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/FlipFlop.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/I/ExtenderRAM.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/I/ExtenderImm.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/booth_multiplier_rv32.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/non_restoring_divider_rv32.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/multdiv.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_decode.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_file.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/trap_unit.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zifencei/fencei_unit.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/pc_fetch.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_if_id.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_id_ex.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_ex_mem.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_mem_wb.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_if.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_id.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_ex.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_mem.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_wb.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/core/cpu.vhd
 set_global_assignment -name VHDL_FILE ../../internal-mem/rtl/Blinky.vhd
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/BOOT_ROM1PORT/boot_rom1port.qip
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/FLASH1PORT/flash1port.qip
@@ -355,15 +377,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[9]
 # Fim da configuração dos pinos utilizados em Design de Computadores.
 #====================================================================
 
-set_global_assignment -name VHDL_FILE ../../../../Core/M/multdiv.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/M/mult.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/M/booth_multiplier_rv32.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/M/non_restoring_divider_rv32.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/M/div.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/M/decoderM.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/extendSigned.vhd
 
-set_global_assignment -name VHDL_FILE ../../../../Core/M/divu.vhd
 
 
 
@@ -372,11 +386,6 @@ set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_
 # --- the SDRAM platform ----------------------------------------------------
 # the core is written in VHDL-2008
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
-set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_decode.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_file.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/trap_unit.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/Zifencei/fencei_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/cache/icache.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_ctrl.vhd

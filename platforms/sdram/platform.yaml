@@ -75,8 +75,8 @@ checks:
   - {name: spike_exit.S tohost offset, file: platforms/sdram/runtime/spike_exit.S, pattern: '(-\d+)\(t0\)\s*// tohost', expect: tohost.base - RAM.end}
 
   # --- VHDL of the core ----------------------------------------------------
-  - {name: core BOOT_ROM_SIZE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'BOOT_ROM_SIZE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: BOOT_ROM.size}
-  - {name: core RAM_BASE_BYTES (the end of FLASH), file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: '\bRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: FLASH.end}
+  - {name: core BOOT_ROM_SIZE_BYTES, file: ../Core/common/mem_map_consts.vhd, pattern: 'BOOT_ROM_SIZE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: BOOT_ROM.size}
+  - {name: core RAM_BASE_BYTES (the end of FLASH), file: ../Core/common/mem_map_consts.vhd, pattern: '\bRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: FLASH.end}
 
   # --- Quartus IPs (only in RV32IM's tree) ---------------------------------
   - {name: BOOT_ROM IP numwords, file: ../Memory/ips/BOOT_ROM1PORT/boot_rom1port.vhd, optional: true, pattern: 'numwords_a => (\d+)', expect: BOOT_ROM.words}
@@ -87,7 +87,7 @@ checks:
   - {name: FLASH_MEM IP widthad, file: ../Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd, optional: true, pattern: 'widthad_a => (\d+)', expect: clog2(FLASH.words)}
 
   # --- the SDRAM is the RAM: the core decodes it as its external data region -------------
-  - {name: core SDRAM_BASE_BYTES, file: ../Core/cores/rv32im_pipeline_core.vhd, pattern: 'SDRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
+  - {name: core SDRAM_BASE_BYTES, file: ../Core/common/mem_map_consts.vhd, pattern: 'SDRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
 
   # --- the testbench and the test programs' header (only in RV32IM's tree) -----------------
   - {name: testbench MAILBOX_ADDR, file: platforms/sdram/testbench/test_c_program.py, pattern: '^MAILBOX_ADDR = (0x[0-9A-Fa-f]+)', expect: mailbox.base}

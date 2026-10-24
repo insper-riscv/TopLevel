@@ -42,7 +42,7 @@ async def test_program_runs_from_the_sdram(dut):
     await ClockCycles(dut.CLK, 5)
     dut.reset.value = 0
 
-    finished = image.DATA_BASE + 0x20
+    finished = image.FINISHED
     for _ in range(TIMEOUT_CYCLES // 200):
         await ClockCycles(dut.CLK, 200)
         if await read_word(dut, finished) == 1:
