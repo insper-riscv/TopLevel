@@ -104,6 +104,7 @@ begin
 	LEDR(3) <= not core_reset;   -- '1' core fora de reset, rodando
 
 	CORE : entity work.rv32im_pipeline_core
+		generic map (HAS_ZICSR => true)
 		port map (
 			clk          => pll_clk_idexmem,
 			reset        => core_reset,
