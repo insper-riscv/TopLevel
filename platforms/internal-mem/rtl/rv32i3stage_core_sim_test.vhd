@@ -1,7 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.rv32i_ctrl_consts.all;
 
 entity rv32i3stage_core_sim_test is
 	generic (
@@ -83,36 +82,36 @@ begin
       clk2 => pll_clk_wb
     );
 
-	CORE : entity work.rv32im_pipeline_core
-		generic map (HAS_ZICSR => HAS_ZICSR)
+	CORE : entity work.cpu
+		generic map (has_m => true, has_zicsr => HAS_ZICSR)
 		port map (
-			clk          => pll_clk_idexmem,
-			reset 		=> reset,
+			i_clk          => pll_clk_idexmem,
+			i_rst 		=> reset,
 
 			----------------------------------------------------------------------
 			-- Interface de busca de instrucao -- barramento unico
 			-- compartilhado por BOOT_ROM e FLASH (ver
 			-- rv32im_pipeline_core.vhd)
 			----------------------------------------------------------------------
-			if_addr       => if_addr,
-			if_rden       => if_rden,
-			boot_rom_data => boot_rom_data,
-			flash_data    => flash_data,
+			o_if_addr       => if_addr,
+			o_if_rden       => if_rden,
+			i_boot_rom_data => boot_rom_data,
+			i_flash_data    => flash_data,
 
-			flash_addr2 => flash_addr2,
-			flash_rden2 => flash_rden2,
-			flash_data2 => flash_data2,
+			o_flash_addr2 => flash_addr2,
+			o_flash_rden2 => flash_rden2,
+			i_flash_data2 => flash_data2,
 
 			----------------------------------------------------------------------
 			-- Interface com a RAM (leitura e escrita)
 			----------------------------------------------------------------------
-			ram_addr    => ram_addr, 	-- endereço de palavra
-			ram_wdata   => ram_wdata, 	-- dados a escrever (saida do store manager)
-			ram_rdata   => ram_rdata, 	-- dados lidos
-			ram_en      => ram_en, 		-- enable ram
-			ram_wren    => ram_wren,    -- write enable
-			ram_rden    => ram_rden,    -- read enable
-			ram_byteena => ram_byteena 	-- máscara de bytes
+			o_ram_addr    => ram_addr, 	-- endereço de palavra
+			o_ram_wdata   => ram_wdata, 	-- dados a escrever (saida do store manager)
+			i_ram_rdata   => ram_rdata, 	-- dados lidos
+			o_ram_en      => ram_en, 		-- enable ram
+			o_ram_wren    => ram_wren,    -- write enable
+			o_ram_rden    => ram_rden,    -- read enable
+			o_ram_byteena => ram_byteena 	-- máscara de bytes
 	);
 
 	-- BOOT_ROM e FLASH: duas instancias separadas da MESMA entidade

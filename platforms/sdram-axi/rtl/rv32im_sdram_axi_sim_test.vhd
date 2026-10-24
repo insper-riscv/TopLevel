@@ -1,7 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.rv32i_ctrl_consts.all;
 
 -- Simulation top of the SDRAM platform: the core, the BOOT_ROM and FLASH of internal-mem (VHDL
 -- arrays) and the SDRAM (bridge, arbiter, controller and chip model of the Memory repository) on
@@ -138,44 +137,44 @@ begin
       clk2 => pll_clk_wb
     );
 
-	CORE : entity work.rv32im_pipeline_core
-		generic map (HAS_ZICSR => HAS_ZICSR, HAS_ZIFENCEI => HAS_ZIFENCEI, HAS_DCACHE => not WRITE_THROUGH)
+	CORE : entity work.cpu
+		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zifencei => HAS_ZIFENCEI, has_dcache => not WRITE_THROUGH)
 		port map (
-			clk          => pll_clk_idexmem,
-			reset 		=> reset,
+			i_clk          => pll_clk_idexmem,
+			i_rst 		=> reset,
 
-			if_addr       => if_addr,
-			if_rden       => if_rden,
-			boot_rom_data => boot_rom_data,
-			flash_data    => flash_data,
+			o_if_addr       => if_addr,
+			o_if_rden       => if_rden,
+			i_boot_rom_data => boot_rom_data,
+			i_flash_data    => flash_data,
 
-			flash_addr2 => flash_addr2,
-			flash_rden2 => flash_rden2,
-			flash_data2 => flash_data2,
+			o_flash_addr2 => flash_addr2,
+			o_flash_rden2 => flash_rden2,
+			i_flash_data2 => flash_data2,
 
-			ram_addr    => ram_addr,
-			ram_wdata   => ram_wdata,
-			ram_rdata   => ram_rdata,
-			ram_en      => ram_en,
-			ram_wren    => ram_wren,
-			ram_rden    => ram_rden,
-			ram_byteena => ram_byteena,
+			o_ram_addr    => ram_addr,
+			o_ram_wdata   => ram_wdata,
+			i_ram_rdata   => ram_rdata,
+			o_ram_en      => ram_en,
+			o_ram_wren    => ram_wren,
+			o_ram_rden    => ram_rden,
+			o_ram_byteena => ram_byteena,
 
-			sdram_addr    => sdram_addr,
-			sdram_wdata   => sdram_wdata,
-			sdram_byteena => sdram_byteena,
-			sdram_rden    => sdram_rden,
-			sdram_wren    => sdram_wren,
-			sdram_rdata   => sdram_rdata,
-			sdram_ready   => sdram_ready,
-			mem_advance   => mem_advance,
+			o_sdram_addr    => sdram_addr,
+			o_sdram_wdata   => sdram_wdata,
+			o_sdram_byteena => sdram_byteena,
+			o_sdram_rden    => sdram_rden,
+			o_sdram_wren    => sdram_wren,
+			i_sdram_rdata   => sdram_rdata,
+			i_sdram_ready   => sdram_ready,
+			o_mem_advance   => mem_advance,
 
-			ic_data  => ic_data,
-			ic_ready => ic_ready,
-			ic_sel   => ic_sel,
-			ic_inval => ic_inval,
-			dc_flush => dc_flush,
-			dc_done  => dc_done
+			i_ic_data  => ic_data,
+			i_ic_ready => ic_ready,
+			o_ic_sel   => ic_sel,
+			o_ic_inval => ic_inval,
+			o_dc_flush => dc_flush,
+			i_dc_done  => dc_done
 	);
 
 	ICACHE : entity work.icache

@@ -1,7 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.rv32i_ctrl_consts.all;
 
 entity core_fpga_test is
 	port (
@@ -103,28 +102,28 @@ begin
 	LEDR(2) <= FPGA_RESET_N;     -- '1' botao de reset fisico solto
 	LEDR(3) <= not core_reset;   -- '1' core fora de reset, rodando
 
-	CORE : entity work.rv32im_pipeline_core
-		generic map (HAS_ZICSR => true)
+	CORE : entity work.cpu
+		generic map (has_m => true, has_zicsr => true)
 		port map (
-			clk          => pll_clk_idexmem,
-			reset        => core_reset,
+			i_clk          => pll_clk_idexmem,
+			i_rst        => core_reset,
 
-			if_addr       => if_addr,
-			if_rden       => if_rden,
-			boot_rom_data => boot_rom_data,
-			flash_data    => flash_data,
+			o_if_addr       => if_addr,
+			o_if_rden       => if_rden,
+			i_boot_rom_data => boot_rom_data,
+			i_flash_data    => flash_data,
 
-			flash_addr2 => flash_addr2,
-			flash_rden2 => flash_rden2,
-			flash_data2 => flash_data2,
+			o_flash_addr2 => flash_addr2,
+			o_flash_rden2 => flash_rden2,
+			i_flash_data2 => flash_data2,
 
-			ram_addr    => ram_addr,
-			ram_wdata   => ram_wdata,
-			ram_rdata   => ram_rdata,
-			ram_en      => ram_en,
-			ram_wren    => ram_wren,
-			ram_rden    => ram_rden,
-			ram_byteena => ram_byteena
+			o_ram_addr    => ram_addr,
+			o_ram_wdata   => ram_wdata,
+			i_ram_rdata   => ram_rdata,
+			o_ram_en      => ram_en,
+			o_ram_wren    => ram_wren,
+			o_ram_rden    => ram_rden,
+			o_ram_byteena => ram_byteena
 	);
 
 	-- BOOT_ROM: fixa, gravada uma unica vez (nunca reescrita via JTAG
