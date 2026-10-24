@@ -106,6 +106,32 @@ architecture behaviour of core_fpga_sdram is
 	signal r_status : std_logic_vector(7 downto 0);
 
 	-- SDRAM controller side
+	-- Busca de instrucao em SDRAM: cache de instrucoes no clock do IF e a ponte do mestre I
+	signal ic_data   : std_logic_vector(31 downto 0);
+	signal ic_ready  : std_logic;
+	signal ic_sel    : std_logic;
+	signal ic_inval  : std_logic;
+	signal id_addr   : std_logic_vector(31 downto 0);
+	signal id_rden   : std_logic;
+	signal id_adv    : std_logic;
+	signal id_ready  : std_logic;
+	signal id_rdata  : std_logic_vector(31 downto 0);
+	signal id_line   : std_logic;
+	signal id_rdx    : std_logic_vector(95 downto 0);
+	signal a_line    : std_logic;
+	signal a_wdx, a_rdx : std_logic_vector(95 downto 0);
+	signal a_bex     : std_logic_vector(11 downto 0);
+	signal i_req, i_ack, i_we : std_logic;
+	signal i_addr    : std_logic_vector(23 downto 0);
+	signal i_wdata, i_rdata : std_logic_vector(31 downto 0);
+	signal i_be      : std_logic_vector(3 downto 0);
+	signal i_line    : std_logic;
+	signal i_wdx, i_rdx : std_logic_vector(95 downto 0);
+	signal i_bex     : std_logic_vector(11 downto 0);
+	signal c_line    : std_logic;
+	signal c_wdx, c_rdx : std_logic_vector(95 downto 0);
+	signal c_bex     : std_logic_vector(11 downto 0);
+
 	signal rst_async : std_logic;
 	signal rst_sr    : std_logic_vector(1 downto 0) := "11";
 	signal rst_mem   : std_logic;
@@ -147,6 +173,7 @@ begin
 	end process;
 
 	CORE : entity work.rv32im_pipeline_core
+		generic map (HAS_ZICSR => true, HAS_ZIFENCEI => true)
 		port map (
 			clk          => pll_clk_idexmem,
 			reset        => core_reset,
@@ -175,8 +202,36 @@ begin
 			sdram_wren    => sdram_wren,
 			sdram_rdata   => sdram_rdata,
 			sdram_ready   => sdram_ready,
-			mem_advance   => mem_advance
+			mem_advance   => mem_advance,
+
+			ic_data  => ic_data,
+			ic_ready => ic_ready,
+			ic_sel   => ic_sel,
+			ic_inval => ic_inval
 	);
+
+	-- Instruction cache of the SDRAM: on the clock of the instruction memories, so that the
+	-- instruction of the PC is there in the same cycle the core samples it, as for the ROMs
+	ICACHE : entity work.icache
+		port map (
+			clk => pll_clk_if, rst => core_reset,
+			addr => if_addr, sel => ic_sel, ready => ic_ready, data => ic_data,
+			invalidate => ic_inval,
+			d_addr => id_addr, d_rden => id_rden, d_advance => id_adv, d_ready => id_ready,
+			d_rdata => id_rdata, d_line => id_line, d_rdata_x => id_rdx
+		);
+
+	IBRIDGE : entity work.sdram_cpu_bridge
+		port map (
+			clk_cpu => pll_clk_idexmem, rst_cpu => core_reset,
+			addr => id_addr, wdata => (others => '0'), byteena => (others => '0'),
+			rden => id_rden, wren => '0', mem_advance => id_adv,
+			ready => id_ready, rdata => id_rdata,
+			line => id_line, wdata_x => (others => '0'), byteena_x => (others => '0'), rdata_x => id_rdx,
+			req_tog => i_req, ack_tog => i_ack, init_done => init_done,
+			c_we => i_we, c_addr => i_addr, c_wdata => i_wdata, c_be => i_be, c_rdata => i_rdata,
+			c_line => i_line, c_wdata_x => i_wdx, c_be_x => i_bex, c_rdata_x => i_rdx
+		);
 
 	BOOT_ROM : entity work.boot_rom1port
     port map (
@@ -238,7 +293,8 @@ begin
 			rden => m_rden, wren => m_wren, mem_advance => mem_advance,
 			ready => m_ready, rdata => m_rdata,
 			req_tog => a_req, ack_tog => a_ack, init_done => init_done,
-			c_we => a_we, c_addr => a_addr, c_wdata => a_wdata, c_be => a_be, c_rdata => a_rdata
+			c_we => a_we, c_addr => a_addr, c_wdata => a_wdata, c_be => a_be, c_rdata => a_rdata,
+			c_line => a_line, c_wdata_x => a_wdx, c_be_x => a_bex, c_rdata_x => a_rdx
 		);
 
 	SDRAM_ARBITER : entity work.sdram_arbiter
@@ -246,10 +302,15 @@ begin
 			clk => pll_clk_mem, rst => rst_mem,
 			a_req_tog => a_req, a_ack_tog => a_ack, a_we => a_we, a_addr => a_addr,
 			a_wdata => a_wdata, a_be => a_be, a_rdata => a_rdata,
+			a_line => a_line, a_wdata_x => a_wdx, a_be_x => a_bex, a_rdata_x => a_rdx,
+			i_req_tog => i_req, i_ack_tog => i_ack, i_we => i_we, i_addr => i_addr,
+			i_wdata => i_wdata, i_be => i_be, i_rdata => i_rdata,
+			i_line => i_line, i_wdata_x => i_wdx, i_be_x => i_bex, i_rdata_x => i_rdx,
 			b_req_tog => b_req, b_ack_tog => b_ack, b_we => b_we, b_addr => b_addr,
 			b_wdata => b_wdata, b_be => b_be, b_rdata => b_rdata,
 			c_req_tog => req_tog, c_ack_tog => ack_tog, c_we => c_we, c_addr => c_addr,
-			c_wdata => c_wdata, c_be => c_be, c_rdata => c_rdata
+			c_wdata => c_wdata, c_be => c_be, c_rdata => c_rdata,
+			c_line => c_line, c_wdata_x => c_wdx, c_be_x => c_bex, c_rdata_x => c_rdx
 		);
 
 	SDRAM_DEBUG : entity work.sdram_dbg_master
@@ -290,6 +351,7 @@ begin
 			clk => pll_clk_mem, rst => rst_mem,
 			req_tog => req_tog, ack_tog => ack_tog, init_done => init_done,
 			we => c_we, addr => c_addr, wdata => c_wdata, be => c_be, rdata => c_rdata,
+			line => c_line, wdata_x => c_wdx, be_x => c_bex, rdata_x => c_rdx,
 			dram_cke => DRAM_CKE, dram_cs_n => DRAM_CS_N, dram_ras_n => DRAM_RAS_N,
 			dram_cas_n => DRAM_CAS_N, dram_we_n => DRAM_WE_N, dram_ba => DRAM_BA,
 			dram_addr => DRAM_ADDR, dram_dqm => dqm,

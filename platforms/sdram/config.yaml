@@ -47,6 +47,7 @@ sim:
     - ../Memory/external/sdram/sdram_ctrl.vhd
     - ../Memory/external/sdram/sdram_cpu_bridge.vhd
     - ../Memory/external/sdram/sdram_arbiter.vhd
+    - ../Memory/external/cache/icache.vhd
     - ../Memory/external/sdram/sdram_dbg_master.vhd
     - ../Memory/external/sdram/sdram_jtag_core.vhd
     - ../Memory/external/sdram/sim/sdram_model.vhd
@@ -74,6 +75,7 @@ sim:
     - ../Core/Zicsr/csr_decode.vhd
     - ../Core/Zicsr/csr_file.vhd
     - ../Core/Zicsr/trap_unit.vhd
+    - ../Core/Zifencei/fencei_unit.vhd
     - ../Core/common/pc_fetch.vhd
     - ../Core/common/reg_IF_ID.vhd
     - ../Core/common/reg_ID_EX.vhd
@@ -81,6 +83,9 @@ sim:
     - ../Core/common/reg_MEM_WB.vhd
     - ../Core/cores/rv32im_pipeline_core.vhd
     - ../TopLevel/platforms/sdram/rtl/rv32im_sdram_sim_test.vhd
+  # FENCE.I invalidates the instruction cache of this platform (the generic exists in its top only)
+  parameters:
+    HAS_ZIFENCEI: true
   test_module: testbench.test_c_program
   python_path:
     - ../TopLevel/platforms/sdram
