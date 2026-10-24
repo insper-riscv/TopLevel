@@ -12,7 +12,7 @@ use ieee.numeric_std.all;
 -- the testbench compares the content of the memory with a golden.
 --
 -- The core's external port goes through the interconnect of the Memory repository: bit 31 = 0 is
--- the SDRAM, bit 31 = 1 a peripheral window, with the JTAG UART at 0xC0000000. UART_* stand for the
+-- the SDRAM, bit 31 = 1 a peripheral window, with the JTAG UART at 0xC0000000 and the display register at 0xD0000000. UART_* stand for the
 -- Virtual JTAG instance of the UART (see jtag_uart); the testbench drives them to read what the
 -- program prints.
 entity rv32im_sdram_sim_test is
@@ -43,7 +43,10 @@ entity rv32im_sdram_sim_test is
 		UART_STATE_CDR : in  std_logic := '0';
 		UART_STATE_SDR : in  std_logic := '0';
 		UART_STATE_UDR : in  std_logic := '0';
-		UART_STATE_UIR : in  std_logic := '0'
+		UART_STATE_UIR : in  std_logic := '0';
+		-- value and segments of the display register (peripheral 5, 0xD0000000), whose host port stays idle here
+		DISPLAY_VALUE  : out std_logic_vector(23 downto 0);
+		DISPLAY_HEX    : out std_logic_vector(41 downto 0)
   	);
 end entity;
 
@@ -188,6 +191,16 @@ begin
 			tck => UART_TCK, tdi => UART_TDI, tdo => UART_TDO, ir_in => UART_IR_IN,
 			state_cdr => UART_STATE_CDR, state_sdr => UART_STATE_SDR,
 			state_udr => UART_STATE_UDR, state_uir => UART_STATE_UIR
+		);
+
+	DISPLAY : entity work.seg_display
+		port map (
+			i_clk => pll_clk_idexmem, i_rst => reset,
+			i_addr => p_addr, i_wdata => p_wdata, i_we => p_we(5), i_re => p_re(5),
+			o_rdata => p_rdata(32 * 5 + 31 downto 32 * 5),
+			i_tck => '0', i_tdi => '0', i_ir_in => "00",
+			i_state_cdr => '0', i_state_sdr => '0', i_state_udr => '0', i_state_uir => '0',
+			o_value => DISPLAY_VALUE, o_hex => DISPLAY_HEX
 		);
 
 	-- the SDRAM and its chip model; the debug ports of the model stay unused here

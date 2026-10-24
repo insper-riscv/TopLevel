@@ -397,6 +397,9 @@ set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/hw/sdram
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/bus/jtag_uart.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/bus/ext_interconnect.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/bus/hw/jtag_uart_shell.vhd
+set_global_assignment -name VHDL_FILE ../../../../Memory/external/bus/hex_to_seg7.vhd
+set_global_assignment -name VHDL_FILE ../../../../Memory/external/bus/seg_display.vhd
+set_global_assignment -name VHDL_FILE ../../../../Memory/external/bus/hw/seg_display_shell.vhd
 
 set_instance_assignment -name PLL_COMPENSATION_MODE DIRECT -to "*sdram_platform_pll*|altera_pll:altera_pll_i*|*"
 set_instance_assignment -name PLL_AUTO_RESET OFF -to "*sdram_platform_pll*|altera_pll:altera_pll_i*|*"

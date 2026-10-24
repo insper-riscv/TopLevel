@@ -12,6 +12,12 @@ entity core_fpga_sdram is
 		CLOCK_50 : in std_logic;
 		FPGA_RESET_N : in std_logic := '1';
 		LEDR : out std_logic_vector(9 downto 0) := (others => '0');
+		HEX0 : out std_logic_vector(6 downto 0);
+		HEX1 : out std_logic_vector(6 downto 0);
+		HEX2 : out std_logic_vector(6 downto 0);
+		HEX3 : out std_logic_vector(6 downto 0);
+		HEX4 : out std_logic_vector(6 downto 0);
+		HEX5 : out std_logic_vector(6 downto 0);
 
 		DRAM_ADDR    : out   std_logic_vector(12 downto 0);
 		DRAM_BA      : out   std_logic_vector(1 downto 0);
@@ -67,7 +73,7 @@ architecture behaviour of core_fpga_sdram is
 	signal sdram_ready   : std_logic;
 	signal mem_advance   : std_logic;
 
-	-- behind the interconnect: the SDRAM bridge, and the peripheral slots (4 is the JTAG UART)
+	-- behind the interconnect: the SDRAM bridge, and the peripheral slots (4 is the JTAG UART, 5 the seven-segment display)
 	signal m_addr    : std_logic_vector(31 downto 0);
 	signal m_wdata   : std_logic_vector(31 downto 0);
 	signal m_rdata   : std_logic_vector(31 downto 0);
@@ -80,6 +86,9 @@ architecture behaviour of core_fpga_sdram is
 	signal p_byteena : std_logic_vector(3 downto 0);
 	signal p_we, p_re : std_logic_vector(7 downto 0);
 	signal p_rdata   : std_logic_vector(8 * 32 - 1 downto 0) := (others => '0');
+	-- the display register: the segments of the six digits, and the value for the result LEDs
+	signal display_hex   : std_logic_vector(41 downto 0);
+	signal display_value : std_logic_vector(23 downto 0);
 
 	signal pll_clk_mem    : std_logic;
 	signal pll_clk_dram   : std_logic;
@@ -284,6 +293,25 @@ begin
 			addr => p_addr, wdata => p_wdata, we => p_we(4), re => p_re(4),
 			rdata => p_rdata(32 * 4 + 31 downto 32 * 4)
 		);
+
+	-- the seven-segment display and its host port (0xD0000000)
+	DISPLAY : entity work.seg_display_shell
+		port map (
+			i_clk => pll_clk_idexmem, i_rst => core_reset,
+			i_addr => p_addr, i_wdata => p_wdata, i_we => p_we(5), i_re => p_re(5),
+			o_rdata => p_rdata(32 * 5 + 31 downto 32 * 5),
+			o_hex => display_hex, o_value => display_value
+		);
+
+	HEX0 <= display_hex(6 downto 0);
+	HEX1 <= display_hex(13 downto 7);
+	HEX2 <= display_hex(20 downto 14);
+	HEX3 <= display_hex(27 downto 21);
+	HEX4 <= display_hex(34 downto 28);
+	HEX5 <= display_hex(41 downto 35);
+
+	-- the five left LEDs repeat the result: lit when the state is "passed" (0001), dark otherwise
+	LEDR(9 downto 5) <= (others => '1') when display_value(15 downto 0) = x"0001" else (others => '0');
 
 	SDRAM_BRIDGE : entity work.sdram_cpu_bridge
 		port map (
