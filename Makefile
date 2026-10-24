@@ -11,7 +11,7 @@ SIM_VHDL := $(shell find ../Core/common ../Core/I ../Core/M ../Core/Zicsr ../Cor
             $(P)/rtl/clk_gen_3way.vhd $(P)/rtl/rv32i3stage_core_sim_test.vhd
 
 # The SDRAM platform's simulation top adds the SDRAM (bridge, controller, chip model) of Memory.
-SDRAM_VHDL := $(shell find ../Memory/external/sdram ../Memory/external/cache/icache.vhd -name '*.vhd' -not -path '*/hw/*' | sort) $(PS)/rtl/rv32im_sdram_sim_test.vhd
+SDRAM_VHDL := $(shell find ../Memory/external/sdram ../Memory/external/bus ../Memory/external/cache/icache.vhd -name '*.vhd' -not -path '*/hw/*' | sort) $(PS)/rtl/rv32im_sdram_sim_test.vhd
 
 .PHONY: check memory-map paths test all clean
 
