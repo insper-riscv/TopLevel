@@ -25,6 +25,8 @@ entity rv32im_sdram_sim_test is
 	  ram_addr_width : natural := 9;
 	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
 	  HAS_ZICSR : boolean := false;
+	  -- Zifencei no core (FENCE.I invalida a cache de instrucoes); false mantem o NOP.
+	  HAS_ZIFENCEI : boolean := false;
 	  -- Imagem de programa gravada na SDRAM no tempo zero (uma palavra de 32 bits por linha, em
 	  -- hexadecimal, a partir de 0x40000000): o hospedeiro que carrega o chip pela porta de debug.
 	  SDRAM_FILE : string := ""
@@ -121,7 +123,7 @@ begin
     );
 
 	CORE : entity work.rv32im_pipeline_core
-		generic map (HAS_ZICSR => HAS_ZICSR)
+		generic map (HAS_ZICSR => HAS_ZICSR, HAS_ZIFENCEI => HAS_ZIFENCEI)
 		port map (
 			clk          => pll_clk_idexmem,
 			reset 		=> reset,

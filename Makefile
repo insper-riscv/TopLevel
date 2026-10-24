@@ -7,11 +7,11 @@ PS    := platforms/sdram
 
 # The simulation top (rv32i3stage_core_sim_test) with the core and the simulation
 # memories: Core and Memory are cloned next to this repository.
-SIM_VHDL := $(shell find ../Core/common ../Core/I ../Core/M ../Core/cores ../Memory/sim -name '*.vhd' | sort) \
+SIM_VHDL := $(shell find ../Core/common ../Core/I ../Core/M ../Core/Zicsr ../Core/Zifencei ../Core/cores ../Memory/sim -name '*.vhd' | sort) \
             $(P)/rtl/clk_gen_3way.vhd $(P)/rtl/rv32i3stage_core_sim_test.vhd
 
 # The SDRAM platform's simulation top adds the SDRAM (bridge, controller, chip model) of Memory.
-SDRAM_VHDL := $(shell find ../Memory/external/sdram -name '*.vhd' -not -path '*/hw/*' | sort) $(PS)/rtl/rv32im_sdram_sim_test.vhd
+SDRAM_VHDL := $(shell find ../Memory/external/sdram ../Memory/external/cache/icache.vhd -name '*.vhd' -not -path '*/hw/*' | sort) $(PS)/rtl/rv32im_sdram_sim_test.vhd
 
 .PHONY: check memory-map paths test all clean
 
