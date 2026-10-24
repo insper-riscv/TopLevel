@@ -47,6 +47,7 @@ sim:
     - ../Memory/external/sdram/sdram_ctrl.vhd
     - ../Memory/external/sdram/sdram_cpu_bridge.vhd
     - ../Memory/external/sdram/sdram_arbiter.vhd
+    - ../Memory/external/cache/icache.vhd
     - ../Memory/external/sdram/sdram_dbg_master.vhd
     - ../Memory/external/sdram/sdram_jtag_core.vhd
     - ../Memory/external/sdram/sim/sdram_model.vhd

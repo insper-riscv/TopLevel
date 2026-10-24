@@ -274,8 +274,8 @@ acesso à memória. É o número que dimensiona a cache L1.
 
 ### 10.3 Timing do Quartus
 
-Os tempos do chip nas restrições são **provisórios** (valores usuais de uma SDR de 143 MHz, ainda
-não conferidos com o datasheet).
+Os tempos do chip nas restrições são os do datasheet (ISSI IS42/45S16320D, grau -7, latência de CAS 3);
+a retenção da saída está em 2,5 ns, 0,2 ns mais conservadora que os 2,7 ns do datasheet.
 
 | Verificação | Modelo lento (85 C) | Modelo rápido |
 | :--- | ---: | ---: |
@@ -288,8 +288,8 @@ não conferidos com o datasheet).
 | comandos e dado de escrita, setup | -0,05 ns | +0,54 ns |
 | comandos e dado de escrita, hold | +2,97 ns | +3,02 ns |
 
-No modelo lento, a interface com o chip fica até 0,2 ns abaixo de zero com os tempos provisórios; no
-modelo rápido e na placa tudo fecha. O datasheet fecha a conta.
+No modelo lento, a interface com o chip fica até 0,2 ns abaixo de zero; no modelo rápido e na placa
+tudo fecha.
 
 Recursos: 15 por cento dos ALMs (2793 de 18 480), 3303 registradores, 51 pinos, 16 por cento dos bits
 de memória de bloco (507 904).

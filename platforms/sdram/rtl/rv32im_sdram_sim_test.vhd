@@ -24,7 +24,10 @@ entity rv32im_sdram_sim_test is
 	  rom_addr_width : natural := 9;
 	  ram_addr_width : natural := 9;
 	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
-	  HAS_ZICSR : boolean := false
+	  HAS_ZICSR : boolean := false;
+	  -- Imagem de programa gravada na SDRAM no tempo zero (uma palavra de 32 bits por linha, em
+	  -- hexadecimal, a partir de 0x40000000): o hospedeiro que carrega o chip pela porta de debug.
+	  SDRAM_FILE : string := ""
   	);
 	port (
     	CLK     : in  std_logic;
@@ -93,6 +96,19 @@ architecture behaviour of rv32im_sdram_sim_test is
 	signal dbg_init_ok    : std_logic;
 	signal sdram_init     : std_logic;
 
+	-- Busca de instrucao em SDRAM: cache de instrucoes no clock do IF
+	signal ic_data   : std_logic_vector(31 downto 0);
+	signal ic_ready  : std_logic;
+	signal ic_sel    : std_logic;
+	signal ic_inval  : std_logic;
+	signal id_addr   : std_logic_vector(31 downto 0);
+	signal id_rden   : std_logic;
+	signal id_adv    : std_logic;
+	signal id_ready  : std_logic;
+	signal id_rdata  : std_logic_vector(31 downto 0);
+	signal id_line   : std_logic;
+	signal id_rdx    : std_logic_vector(95 downto 0);
+
 begin
 
 	pll_inst : entity work.clk_gen_3way
@@ -134,7 +150,21 @@ begin
 			sdram_wren    => sdram_wren,
 			sdram_rdata   => sdram_rdata,
 			sdram_ready   => sdram_ready,
-			mem_advance   => mem_advance
+			mem_advance   => mem_advance,
+
+			ic_data  => ic_data,
+			ic_ready => ic_ready,
+			ic_sel   => ic_sel,
+			ic_inval => ic_inval
+	);
+
+	ICACHE : entity work.icache
+		port map (
+			clk => pll_clk_if, rst => reset,
+			addr => if_addr, sel => ic_sel, ready => ic_ready, data => ic_data,
+			invalidate => ic_inval,
+			d_addr => id_addr, d_rden => id_rden, d_advance => id_adv, d_ready => id_ready,
+			d_rdata => id_rdata, d_line => id_line, d_rdata_x => id_rdx
 	);
 
 	INTERCONNECT : entity work.ext_interconnect
@@ -161,12 +191,15 @@ begin
 
 	-- the SDRAM and its chip model; the debug ports of the model stay unused here
 	SDRAM : entity work.sdram_system
+		generic map (INIT_FILE => SDRAM_FILE)
 		port map (
 			clk_mem => CLK_MEM, clk_cpu => pll_clk_idexmem,
 			rst_mem => reset,   rst_cpu => reset,
 			addr => m_addr, wdata => m_wdata, byteena => m_byteena,
 			rden => m_rden, wren => m_wren, mem_advance => mem_advance,
 			ready => m_ready, rdata => m_rdata,
+			i_addr => id_addr, i_rden => id_rden, i_advance => id_adv, i_ready => id_ready,
+			i_rdata => id_rdata, i_line => id_line, i_rdata_x => id_rdx,
 			init_done => sdram_init,
 			dbg_word_addr => DBG_WORD_ADDR, dbg_word_data => DBG_WORD_DATA,
 			dbg_flip => '0', dbg_flip_addr => (others => '0'), dbg_flip_bit => (others => '0'),

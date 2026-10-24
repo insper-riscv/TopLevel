@@ -190,7 +190,7 @@ mudou, porque usa a porta de debug da SDRAM.
 | clock do JTAG | $+10{,}776$ ns |
 
 As duas folgas negativas são as mesmas da fase 1: são os caminhos da interface com o chip, calculados
-com tempos provisórios do chip, e mudam quando a tabela AC do datasheet entrar. A UART e o
+com os tempos do datasheet do chip. A UART e o
 interconnect não aparecem entre os caminhos críticos, e a travessia entre o clock do JTAG e o do core
 tem a mesma restrição de atraso máximo e mínimo da porta de debug.
 
