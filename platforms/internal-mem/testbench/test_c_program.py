@@ -98,6 +98,11 @@ TIMEOUT_CYCLES = int(os.environ.get("SIM_TIMEOUT_CYCLES", "200000"))
 
 UART_TX_EXPECTED = b"UART OK\r\n"
 UART_ECHO_EXPECTED = b"RX test\r\n"
+UART_ERRORS_PREFIX = b"ATR"
+UART_ERRORS_READY = b"OB"
+UART_ERRORS_RX_INPUT = bytes((0x12, 0x34))
+UART_BURST_PAYLOAD = bytes(range(32))
+UART_ERRORS_FINAL = b"P"
 UART_BIT_TIME_NS = round(1_000_000_000 / 115_200)
 
 
@@ -158,6 +163,29 @@ async def send_uart_message(uart_rx, message: bytes) -> None:
     for value in message:
         await send_uart_byte(uart_rx, value)
 
+
+async def exchange_uart_errors(uart_rx, uart_tx) -> bytes:
+    """Exercise the same coordinated protocol as uart_hardware_test.py."""
+    received = bytearray()
+
+    received.extend(await receive_uart_message(uart_tx, len(UART_ERRORS_PREFIX)))
+
+    ready_capture = cocotb.start_soon(
+        receive_uart_message(uart_tx, len(UART_ERRORS_READY))
+    )
+    await send_uart_message(uart_rx, UART_ERRORS_RX_INPUT)
+    received.extend(await ready_capture)
+
+    burst_capture = cocotb.start_soon(
+        receive_uart_message(
+            uart_tx,
+            len(UART_BURST_PAYLOAD) + len(UART_ERRORS_FINAL),
+        )
+    )
+    await send_uart_message(uart_rx, UART_BURST_PAYLOAD)
+    received.extend(await burst_capture)
+    return bytes(received)
+
 @cocotb.test()
 async def test_program(dut) -> None:
     test_name = os.environ.get("TEST_NAME", "?")
@@ -178,10 +206,24 @@ async def test_program(dut) -> None:
         uart_expected = UART_ECHO_EXPECTED
         dut.UART_RX.value = 1
 
-    if uart_expected is not None:
-        uart_capture_task = cocotb.start_soon(
-            receive_uart_message(dut.UART_TX, len(uart_expected))
+    elif test_name == "uart-errors":
+        uart_expected = (
+            UART_ERRORS_PREFIX
+            + UART_ERRORS_READY
+            + UART_BURST_PAYLOAD
+            + UART_ERRORS_FINAL
         )
+        dut.UART_RX.value = 1
+
+    if uart_expected is not None:
+        if test_name == "uart-errors":
+            uart_capture_task = cocotb.start_soon(
+                exchange_uart_errors(dut.UART_RX, dut.UART_TX)
+            )
+        else:
+            uart_capture_task = cocotb.start_soon(
+                receive_uart_message(dut.UART_TX, len(uart_expected))
+            )
     cycles_used = 0
     # {RAM-relative byte address: byte value} — updated on every RAM
     # write seen on the bus, honoring ram_byteena the same way

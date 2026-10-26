@@ -45,7 +45,9 @@ sim:
     SIM_SAMPLE_CLOCK: pll_clk_idexmem
     # config.yaml's 200000 counts ticks of the simulation top's base
     # clock, three per core cycle; here one tick is one core cycle.
-    SIM_TIMEOUT_CYCLES: "70000"
+    # uart-errors exchanges 32 raw bytes at 115200 baud, so its coordinated
+    # serial protocol needs about 4 ms even though the CPU work is short.
+    SIM_TIMEOUT_CYCLES: "250000"
   # In dependency order. The core is the same as config.yaml's, the
   # memories are the Quartus IP wrappers of the hardware project, the
   # PLL is a behavioral stand-in (its real model is SystemVerilog) and

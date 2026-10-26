@@ -34,14 +34,14 @@ uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
 uv run riscv-tools --config tools/riscv_build/config.fpga-sim.yaml sim
 ```
 
-Para rodar somente os dois testes da UART no topo de FPGA:
+Para rodar somente os três testes da UART no topo de FPGA:
 
 ```bash
 uv run riscv-tools --config tools/riscv_build/config.fpga-sim.yaml \
-  sim --only uart-echo,uart-tx
+  sim --only uart-echo,uart-tx,uart-errors
 ```
 
-O `compile --emit mif` gera as imagens e os goldens em `build/real/`, e o `sim` com o perfil novo lê essas imagens, gera o `.mif` da BOOT_ROM e roda os 91 testes. A biblioteca `altera_mf` é analisada uma vez por execução dentro de `build/sim/sim_work/<perfil-de-simulacao>/libraries`. O nome do perfil combina o topo com uma impressão digital estável da configuração completa, evitando reutilizar artefatos incompatíveis entre perfis.
+O `compile --emit mif` gera as imagens e os goldens em `build/real/`, e o `sim` com o perfil novo lê essas imagens, gera o `.mif` da BOOT_ROM e roda os 92 testes. A biblioteca `altera_mf` é analisada uma vez por execução dentro de `build/sim/sim_work/<perfil-de-simulacao>/libraries`. O nome do perfil combina o topo com uma impressão digital estável da configuração completa, evitando reutilizar artefatos incompatíveis entre perfis.
 
 O workflow `sim-fpga.yml` faz o mesmo no runner self-hosted, dentro da imagem `infra-toolchain`, com o Quartus montado somente para leitura. Só roda manualmente e pede a mesma confirmação (`FPGA_RUN_SECRET`) do `real.yml`. Enquanto as mudanças da UART ainda estiverem nas branches de feature, execute-o com `peripherals_ref=UART` e `toplevel_ref=UART`; depois dos merges, mantenha os valores padrão `main`.
 
