@@ -12,10 +12,10 @@ concurrency:
 jobs:
   toplevel:
     # Needs no hardware and no Quartus license (GHDL is open source).
-    # insper-riscv/Infra's toolchain image has GHDL and uv on PATH.
+    # the ci-vhdl image of insper-riscv/Infra has GHDL and uv on PATH.
     runs-on: ubuntu-26.04
     container:
-      image: ghcr.io/insper-riscv/infra-toolchain:latest
+      image: ghcr.io/insper-riscv/ci-vhdl:latest
 
     steps:
       - uses: actions/checkout@v7

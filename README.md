@@ -58,7 +58,7 @@ make check        # Construção do topo de simulação no GHDL
 make test         # Testes por entidade em cocotb do RTL (clk_gen_3way)
 ```
 
-As ferramentas (GHDL e uv) vêm da imagem `infra-toolchain` do repositório [Infra](https://github.com/insper-riscv/Infra), onde a integração contínua executa. A simulação do topo de hardware exige a biblioteca `altera_mf` do Quartus e roda onde o Quartus está instalado, conforme [docs/SIMULACAO_TOPO_FPGA.md](docs/SIMULACAO_TOPO_FPGA.md).
+As ferramentas (GHDL e uv) vêm da imagem `ci-vhdl` do repositório [Infra](https://github.com/insper-riscv/Infra), onde a integração contínua executa. A simulação do topo de hardware exige a biblioteca `altera_mf` do Quartus e roda onde o Quartus está instalado, conforme [docs/SIMULACAO_TOPO_FPGA.md](docs/SIMULACAO_TOPO_FPGA.md).
 
 ---
 
