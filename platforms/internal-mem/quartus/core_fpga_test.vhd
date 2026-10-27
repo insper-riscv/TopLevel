@@ -4,9 +4,11 @@ use ieee.numeric_std.all;
 
 entity core_fpga_test is
 	port (
-		CLOCK_50 : in std_logic;
-		FPGA_RESET_N : in std_logic := '1';
-		LEDR : out std_logic_vector(9 downto 0) := (others => '0')
+		CLOCK_50     : in  std_logic;
+		FPGA_RESET_N : in  std_logic := '1';
+		UART_RX      : in  std_logic := '1';
+		UART_TX      : out std_logic := '1';
+		LEDR         : out std_logic_vector(9 downto 0) := (others => '0')
   	);
 end entity;
 
@@ -68,6 +70,16 @@ architecture behaviour of core_fpga_test is
 	-- (ex: depois de carregar um novo conteúdo de ROM via JTAG).
 	signal core_reset : std_logic;
 
+	-- UART memory-mapped em 0xC0000000
+	signal uart_selected : std_logic;
+	signal uart_write    : std_logic;
+	signal uart_read     : std_logic;
+	signal uart_rdata    : std_logic_vector(31 downto 0);
+
+	signal ram_memory_rdata : std_logic_vector(31 downto 0);
+	signal uart_read_d      : std_logic;
+	signal uart_rdata_d     : std_logic_vector(31 downto 0);
+
 begin
 
 	-- rst era amarrado em '0' antes -- nunca pulsado. gui_pll_auto_reset
@@ -92,6 +104,15 @@ begin
     );
 
 	core_reset <= (not pll_locked) or (not FPGA_RESET_N);
+
+
+	-- Seleciona a região 0xC0000000 - 0xCFFFFFFF.
+	uart_selected <= '1'
+		when ram_addr(31 downto 28) = x"C"
+		else '0';
+
+	uart_write <= ram_wren and ram_en and uart_selected;
+	uart_read  <= ram_rden and ram_en and uart_selected;
 
 	-- Status LEDs -- ver README.md/docs para o mapa completo. Baratos
 	-- o bastante pra deixar permanentes (nao so' debug de bring-up):
@@ -125,6 +146,42 @@ begin
 			o_ram_rden    => ram_rden,
 			o_ram_byteena => ram_byteena
 	);
+
+	UART_PERIPHERAL : entity work.UART
+		generic map (
+			DATA_WIDTH => 32
+		)
+		port map (
+			clock    => pll_clk_idexmem,
+			clear    => core_reset,
+			data_in  => ram_wdata,
+			address  => ram_addr(3 downto 2),
+			write    => uart_write,
+			read     => uart_read,
+			data_out => uart_rdata,
+			irq      => open,
+			uart_rx  => UART_RX,
+			uart_tx  => UART_TX
+		);
+
+	UART_READ_PIPELINE : process (core_reset, pll_clk_idexmem)
+	begin
+		if core_reset = '1' then
+			uart_read_d  <= '0';
+			uart_rdata_d <= (others => '0');
+		elsif rising_edge(pll_clk_idexmem) then
+			uart_read_d <= uart_read;
+
+			if uart_read = '1' then
+				uart_rdata_d <= uart_rdata;
+			end if;
+		end if;
+	end process;
+
+	-- Seleciona o resultado correspondente ao acesso do ciclo anterior.
+	ram_rdata <= uart_rdata_d
+		when uart_read_d = '1'
+		else ram_memory_rdata;
 
 	-- BOOT_ROM: fixa, gravada uma unica vez (nunca reescrita via JTAG
 	-- por teste -- ver config.yaml quartus.boot_rom_mif_target). So'
@@ -165,9 +222,9 @@ begin
 		byteena => ram_byteena,
 		clock   => pll_clk_idexmem,
 		data    => ram_wdata,
-		rden    => ram_rden and ram_en,
-		wren    => ram_wren and ram_en,
-		q       => ram_rdata
+		rden => ram_rden and ram_en and not uart_selected,
+		wren => ram_wren and ram_en and not uart_selected,
+		q    => ram_memory_rdata
 	 );
 
 	-- FLASH_MEM: segunda copia fisica da FLASH, so' para leitura de

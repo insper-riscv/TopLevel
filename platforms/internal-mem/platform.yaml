@@ -30,7 +30,8 @@ boot:
   entry: 0x00000800
   wait_restart: 0x00000100
 
-peripherals: []
+peripherals:
+  - {name: UART, base: 0xC0000000, id: 4}
 
 checks:
   # --- config.yaml ---------------------------------------------------------

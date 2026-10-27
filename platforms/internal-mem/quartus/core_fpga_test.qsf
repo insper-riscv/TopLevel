@@ -107,6 +107,12 @@ set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_mem.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_wb.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/core/cpu.vhd
 set_global_assignment -name VHDL_FILE ../rtl/Blinky.vhd
+set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/UART.vhd
+set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd
+set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/uartTx.vhd
+set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/uartRx.vhd
+set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/baudGen.vhd
+set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/BOOT_ROM1PORT/boot_rom1port.qip
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/FLASH1PORT/flash1port.qip
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/RAM1PORT/ram1port.qip
@@ -383,5 +389,10 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[9]
 
 
 
+set_location_assignment PIN_M16 -to UART_RX
+set_location_assignment PIN_C16 -to UART_TX
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to UART_RX
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to UART_TX
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to UART_TX
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
