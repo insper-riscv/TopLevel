@@ -26,8 +26,9 @@ jobs:
         # paths.yaml, platform.yaml and the Makefile name these repositories as
         # siblings of this checkout.
         run: |
-          rm -rf ../Core ../Memory ../Peripherals
+          rm -rf ../Core ../Common-Components ../Memory ../Peripherals
           git clone --depth 1 https://github.com/insper-riscv/Core.git ../Core
+          git clone --depth 1 https://github.com/insper-riscv/Common-Components.git ../Common-Components
           git clone --depth 1 https://github.com/insper-riscv/Memory.git ../Memory
           git clone --depth 1 https://github.com/insper-riscv/Peripherals.git ../Peripherals
 
