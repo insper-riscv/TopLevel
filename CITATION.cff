@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: "Se você usar este software, cite-o com os metadados abaixo. / If you use this software, please cite it using the metadata below."
+type: software
+title: "TopLevel: plataformas e topo de simulação do SoC RISC-V RV32"
+abstract: >-
+  Plataformas do SoC RISC-V RV32: projeto Quartus, PLL, topo de simulação,
+  runtime C, mapa de memória e testbench, em VHDL-2008. Desenvolvido no
+  Capstone do Insper, financiado pelo CTI Renato Archer.
+authors:
+  - family-names: Hix
+    given-names: Lucas
+    alias: Peng1104
+  - family-names: Oliveira
+    given-names: Breno Schneider Salles de
+    alias: brnoschsaloli
+  - family-names: Cruz
+    given-names: Artur
+    alias: arturacruz
+  - family-names: Bomfim
+    given-names: Henrique Rocha
+    alias: HenriqueRBomfim
+  - family-names: Figueiredo
+    given-names: Luka Siqueira Ferreira de
+    alias: lukafig
+  - family-names: Finger
+    given-names: Ilana Chaia
+    alias: ilacftemp
+  - family-names: Paloschi
+    given-names: Leonardo Merlin
+    alias: leonardopaloschi
+  - family-names: Lima
+    given-names: Lucas Fernando De Souza
+    alias: lucasouzamil
+  - family-names: Ventura
+    given-names: Pedro Pereira Cecilio
+    alias: pedropcventura
+repository-code: "https://github.com/insper-riscv/TopLevel"
+url: "https://github.com/insper-riscv/TopLevel"
+license: Apache-2.0
+keywords:
+  - RISC-V
+  - VHDL
+  - FPGA
+  - Quartus
+  - SoC
