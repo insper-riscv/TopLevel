@@ -123,7 +123,7 @@ begin
 	LEDR(2) <= FPGA_RESET_N;     -- '1' botao de reset fisico solto
 	LEDR(3) <= not core_reset;   -- '1' core fora de reset, rodando
 
-	CORE : entity work.cpu
+	CORE : entity work.core
 		generic map (has_m => true, has_zicsr => true)
 		port map (
 			i_clk          => pll_clk_idexmem,

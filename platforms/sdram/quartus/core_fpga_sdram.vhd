@@ -180,7 +180,7 @@ begin
 		end if;
 	end process;
 
-	CORE : entity work.cpu
+	CORE : entity work.core
 		generic map (has_m => true, has_zicsr => true, has_zifencei => true)
 		port map (
 			i_clk          => pll_clk_idexmem,

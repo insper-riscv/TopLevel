@@ -27,7 +27,11 @@ entity rv32i3stage_core_sim_test is
 	  rom_addr_width : natural := 9;
 	  ram_addr_width : natural := 9;
 	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
-	  HAS_ZICSR : boolean := false
+	  HAS_ZICSR : boolean := false;
+	  -- Extensao M completa no core.
+	  HAS_M : boolean := true;
+	  -- Multiplicacao sem divisao (Zmmul) no core.
+	  HAS_ZMMUL : boolean := false
   	);
 	port (
     	CLK  : in  std_logic;
@@ -82,8 +86,8 @@ begin
       clk2 => pll_clk_wb
     );
 
-	CORE : entity work.cpu
-		generic map (has_m => true, has_zicsr => HAS_ZICSR)
+	CORE : entity work.core
+		generic map (has_m => HAS_M, has_zmmul => HAS_ZMMUL, has_zicsr => HAS_ZICSR)
 		port map (
 			i_clk          => pll_clk_idexmem,
 			i_rst 		=> reset,

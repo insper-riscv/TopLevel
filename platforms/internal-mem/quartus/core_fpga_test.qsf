@@ -92,6 +92,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/M/booth_multiplier_rv32.v
 set_global_assignment -name VHDL_FILE ../../../../Core/M/non_restoring_divider_rv32.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/multdiv.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_decode.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_addr_consts.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_file.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/trap_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zifencei/fencei_unit.vhd
@@ -105,7 +106,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_id.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_ex.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_mem.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/core/cpu.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/core/core.vhd
 set_global_assignment -name VHDL_FILE ../rtl/Blinky.vhd
 set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/UART.vhd
 set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd

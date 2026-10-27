@@ -24,6 +24,10 @@ entity rv32im_sdram_sim_test is
 	  ram_addr_width : natural := 9;
 	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
 	  HAS_ZICSR : boolean := false;
+	  -- Extensao M completa no core.
+	  HAS_M : boolean := true;
+	  -- Multiplicacao sem divisao (Zmmul) no core.
+	  HAS_ZMMUL : boolean := false;
 	  -- Zifencei no core (FENCE.I invalida a cache de instrucoes); false mantem o NOP.
 	  HAS_ZIFENCEI : boolean := false;
 	  -- Imagem de programa gravada na SDRAM no tempo zero (uma palavra de 32 bits por linha, em
@@ -124,8 +128,8 @@ begin
       clk2 => pll_clk_wb
     );
 
-	CORE : entity work.cpu
-		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zifencei => HAS_ZIFENCEI)
+	CORE : entity work.core
+		generic map (has_m => HAS_M, has_zmmul => HAS_ZMMUL, has_zicsr => HAS_ZICSR, has_zifencei => HAS_ZIFENCEI)
 		port map (
 			i_clk          => pll_clk_idexmem,
 			i_rst 		=> reset,

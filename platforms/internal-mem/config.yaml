@@ -251,6 +251,7 @@ sim:
     - ../Core/M/non_restoring_divider_rv32.vhd
     - ../Core/M/multdiv.vhd
     - ../Core/Zicsr/csr_decode.vhd
+    - ../Core/Zicsr/csr_addr_consts.vhd
     - ../Core/Zicsr/csr_file.vhd
     - ../Core/Zicsr/trap_unit.vhd
     - ../Core/Zifencei/fencei_unit.vhd
@@ -264,7 +265,7 @@ sim:
     - ../Core/core/stage_ex.vhd
     - ../Core/core/stage_mem.vhd
     - ../Core/core/stage_wb.vhd
-    - ../Core/core/cpu.vhd
+    - ../Core/core/core.vhd
     - ../Memory/sim/RAM_simulation.vhd
     - ../Memory/sim/ROM_simulation.vhd
     - ../TopLevel/platforms/internal-mem/rtl/clk_gen_3way.vhd

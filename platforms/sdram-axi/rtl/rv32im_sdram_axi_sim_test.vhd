@@ -137,7 +137,7 @@ begin
       clk2 => pll_clk_wb
     );
 
-	CORE : entity work.cpu
+	CORE : entity work.core
 		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zifencei => HAS_ZIFENCEI, has_dcache => not WRITE_THROUGH)
 		port map (
 			i_clk          => pll_clk_idexmem,
