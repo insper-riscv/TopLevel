@@ -242,6 +242,7 @@ sim:
     - ../Core/I/extender_imm.vhd
     - ../Core/I/extender_ram.vhd
     - ../Core/I/store_manager.vhd
+    - ../Core/I/misaligned_unit.vhd
     - ../Core/common/control_unit.vhd
     - ../Core/common/bubble_mux.vhd
     - ../Core/common/forwarding_unit.vhd

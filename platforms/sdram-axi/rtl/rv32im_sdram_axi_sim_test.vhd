@@ -27,6 +27,8 @@ entity rv32im_sdram_axi_sim_test is
 	  HAS_ZICSR : boolean := false;
 	  -- Zifencei no core (FENCE.I invalida a cache de instrucoes); false mantem o NOP.
 	  HAS_ZIFENCEI : boolean := false;
+	  -- Acesso desalinhado a memoria principal executado em hardware (Zicclsm).
+	  HAS_ZICCLSM : boolean := true;
 	  -- cache de dados write-through (true) ou write-back (false); com write-back a FENCE.I pede o flush
 	  WRITE_THROUGH : boolean := true;
 	  -- Imagem de programa gravada na SDRAM no tempo zero (ver rv32im_sdram_sim_test)
@@ -50,6 +52,13 @@ entity rv32im_sdram_axi_sim_test is
 end entity;
 
 architecture behaviour of rv32im_sdram_axi_sim_test is
+
+	-- Exceção sinalizada pelo core sem Zicsr (um ciclo em '1'); com Zicsr fica em '0'.
+	signal core_trap       : std_logic;
+	-- Causa da exceção sinalizada, no formato do mcause.
+	signal core_trap_cause : std_logic_vector(31 downto 0);
+	-- PC da instrução que gerou a exceção sinalizada.
+	signal core_trap_pc    : std_logic_vector(31 downto 0);
 
 	signal if_addr : std_logic_vector(31 downto 0);
 	signal if_rden : std_logic;
@@ -138,8 +147,12 @@ begin
     );
 
 	CORE : entity work.core
-		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zifencei => HAS_ZIFENCEI, has_dcache => not WRITE_THROUGH)
+		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zifencei => HAS_ZIFENCEI, has_zicclsm => HAS_ZICCLSM, has_dcache => not WRITE_THROUGH)
 		port map (
+			o_trap       => core_trap,
+			o_trap_cause => core_trap_cause,
+			o_trap_pc    => core_trap_pc,
+
 			i_clk          => pll_clk_idexmem,
 			i_rst 		=> reset,
 

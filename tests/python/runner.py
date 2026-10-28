@@ -8,7 +8,7 @@ from pathlib import Path
 # repo's requirements.txt pulls unpinned cocotb, which now resolves to
 # 2.x, so the old `cocotb.runner` import 404s. See insper-riscv/Tools'
 # own sim_runner module for the same migration.
-from cocotb_tools.runner import get_runner
+from cocotb_tools.runner import get_results, get_runner
 
 def run_cocotb_test(toplevel: str, sources: list, test_module: str, parameters: dict = None,
                     build_args: list = None, test_args: list = None):
@@ -40,6 +40,8 @@ def run_cocotb_test(toplevel: str, sources: list, test_module: str, parameters: 
         for k, v in parameters.items():
             if isinstance(v, bool):
                 abs_params[k] = "true" if v else "false"
+            elif isinstance(v, int):
+                abs_params[k] = str(v)
             else:
                 # tenta resolver como caminho absoluto relativo ao ambiente atual
                 vpath = Path(v)
@@ -67,7 +69,7 @@ def run_cocotb_test(toplevel: str, sources: list, test_module: str, parameters: 
     wave_file = build_dir / "waves.ghw"
     plusargs = [f"--wave={wave_file}"]
 
-    runner.test(
+    results_xml = runner.test(
         hdl_toplevel=toplevel,
         hdl_toplevel_lang="vhdl",
         test_module=test_module,
@@ -77,6 +79,11 @@ def run_cocotb_test(toplevel: str, sources: list, test_module: str, parameters: 
     )
 
     print(f"Waves: {wave_file} (gerado)")
+
+    # runner.test() returns normally when a cocotb test fails; the failures are only in results.xml
+    total, failed = get_results(results_xml)
+    if failed:
+        raise RuntimeError(f"{failed} of {total} cocotb tests failed")
 
 if __name__ == "__main__":
     tests_root = Path(__file__).resolve().parents[1]
@@ -103,6 +110,7 @@ if __name__ == "__main__":
 
     if args.test_name == "all":
         print("Executando TODOS os testes definidos em tests.json...")
+        failures = []
         for name, config in TEST_CONFIGS.items():
             # "skip"/"skip_reason": a config-level opt-out (not a
             # removal) for a test that's currently known-broken for a
@@ -122,8 +130,12 @@ if __name__ == "__main__":
                 run_cocotb_test(**{k: v for k, v in config.items() if k not in ("skip", "skip_reason")})
                 print(f"{'-'*20} TESTE {name.upper()} FINALIZADO COM SUCESSO {'-'*20}")
             except Exception as e:
+                failures.append(name)
                 print(f"[ERRO] O teste '{name}' falhou: {e}")
         print("\nTodos os testes foram executados.")
+        if failures:
+            print(f"[ERRO] {len(failures)} teste(s) falharam: {', '.join(failures)}")
+            sys.exit(1)
     elif args.test_name in TEST_CONFIGS:
         print(f"Executando teste específico: {args.test_name}")
         config = TEST_CONFIGS[args.test_name]

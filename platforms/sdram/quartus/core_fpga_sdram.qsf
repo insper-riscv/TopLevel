@@ -82,6 +82,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/common/reg_file.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/I/extender_imm.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/I/extender_ram.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/I/store_manager.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/I/misaligned_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/control_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/bubble_mux.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/forwarding_unit.vhd

@@ -31,7 +31,9 @@ entity rv32i3stage_core_sim_test is
 	  -- Extensao M completa no core.
 	  HAS_M : boolean := true;
 	  -- Multiplicacao sem divisao (Zmmul) no core.
-	  HAS_ZMMUL : boolean := false
+	  HAS_ZMMUL : boolean := false;
+	  -- Acesso desalinhado a memoria principal executado em hardware (Zicclsm).
+	  HAS_ZICCLSM : boolean := true
   	);
 	port (
     	CLK  : in  std_logic;
@@ -40,6 +42,13 @@ entity rv32i3stage_core_sim_test is
 end entity;
 
 architecture behaviour of rv32i3stage_core_sim_test is
+
+	-- Exceção sinalizada pelo core sem Zicsr (um ciclo em '1'); com Zicsr fica em '0'.
+	signal core_trap       : std_logic;
+	-- Causa da exceção sinalizada, no formato do mcause.
+	signal core_trap_cause : std_logic_vector(31 downto 0);
+	-- PC da instrução que gerou a exceção sinalizada.
+	signal core_trap_pc    : std_logic_vector(31 downto 0);
 
 	-- IF stage: barramento UNICO compartilhado por BOOT_ROM e FLASH
 	-- (ver rv32im_pipeline_core.vhd is_boot_rom_if/is_boot_rom_d) --
@@ -87,8 +96,12 @@ begin
     );
 
 	CORE : entity work.core
-		generic map (has_m => HAS_M, has_zmmul => HAS_ZMMUL, has_zicsr => HAS_ZICSR)
+		generic map (has_m => HAS_M, has_zmmul => HAS_ZMMUL, has_zicsr => HAS_ZICSR, has_zicclsm => HAS_ZICCLSM)
 		port map (
+			o_trap       => core_trap,
+			o_trap_cause => core_trap_cause,
+			o_trap_pc    => core_trap_pc,
+
 			i_clk          => pll_clk_idexmem,
 			i_rst 		=> reset,
 

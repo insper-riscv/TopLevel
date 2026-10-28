@@ -208,8 +208,9 @@ def build():
         lui(30, SDRAM_BASE >> 12),
         addi(30, 30, HANDLER_OFFSET),
         csrrw(0, MTVEC, 30),                    # mtvec = the handler
+        lui(31, 0x80000),                       # x31 = the peripheral window, outside the main memory
         lw(20, 7, 0),                           # the SDRAM load keeps the pipeline waiting
-        lw(21, 7, 1),                           # misaligned load right behind it: cause 4
+        lw(21, 31, 1),                          # misaligned load right behind it, outside the main memory: cause 4
         addi(25, 0, 5),                         # runs after the handler returns
         sw(20, 7, 0x4C),                        # [data + 0x4C] = 210: the first load finished
         sw(25, 7, 0x50),                        # [data + 0x50] = 5
@@ -250,7 +251,7 @@ def build():
         csrrs(23, MTVAL, 0),
         csrrs(24, MEPC, 0),
         sw(22, 7, 0x44),                        # [data + 0x44] = 4
-        sw(23, 7, 0x48),                        # [data + 0x48] = data + 1
+        sw(23, 7, 0x48),                        # [data + 0x48] = 0x80000001
         addi(24, 24, 4),
         csrrw(0, MEPC, 24),
         MRET,
@@ -270,7 +271,7 @@ def build():
         DATA_BASE: 210, DATA_BASE + 4: 77, DATA_BASE + 8: 1, DATA_BASE + 12: 2,
         DATA_BASE + 0x24: 19, DATA_BASE + 0x28: 2, DATA_BASE + 0x2C: 7, DATA_BASE + 0x30: 8,
         DATA_BASE + 0x34: 6, DATA_BASE + 0x38: 2, FINISHED: 1,
-        DATA_BASE + 0x44: 4, DATA_BASE + 0x48: DATA_BASE + 1, DATA_BASE + 0x4C: 210, DATA_BASE + 0x50: 5,
+        DATA_BASE + 0x44: 4, DATA_BASE + 0x48: 0x80000001, DATA_BASE + 0x4C: 210, DATA_BASE + 0x50: 5,
     }
     return boot, words, expected, labels
 
