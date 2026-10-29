@@ -194,6 +194,17 @@ async def exchange_uart_errors(uart_rx, uart_tx) -> bytes:
     received.extend(await burst_capture)
     return bytes(received)
 
+def retired_now(dut) -> int:
+    """1 when an instruction retires on this clock edge, 0 otherwise.
+
+    The top exposes the retirement pulse of the core (valid in EX, pipeline advancing, no exception).
+    """
+    try:
+        return int(dut.core_retire.value == 1)
+    except (AttributeError, ValueError):
+        return 0
+
+
 @cocotb.test()
 async def test_program(dut) -> None:
     test_name = os.environ.get("TEST_NAME", "?")
@@ -235,6 +246,7 @@ async def test_program(dut) -> None:
                 receive_uart_message(dut.UART_TX, len(uart_expected))
             )
     cycles_used = 0
+    retired = 0
     # {RAM-relative byte address: byte value} — updated on every RAM
     # write seen on the bus, honoring ram_byteena the same way
     # ram_simulation.vhd itself does (mask bit i gates byte lane i of
@@ -254,6 +266,7 @@ async def test_program(dut) -> None:
     for _ in range(TIMEOUT_CYCLES):
         await RisingEdge(sample_clock)
         cycles_used += 1
+        retired += retired_now(dut)
 
         if dut.ram_wren.value != 1 or dut.ram_en.value != 1:
             continue
@@ -310,6 +323,7 @@ async def test_program(dut) -> None:
                 dut._log.info(f"UART TX recebido: {received!r}")
             dut._log.info("PASS")
             dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
+            dut._log.info(f"CORE CYCLES {cycles_used} INSTRUCTIONS RETIRED {retired}")
             if GOLDEN_PATH is not None:
                 golden = load_golden(GOLDEN_PATH)
                 if not compare_bytes(

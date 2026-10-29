@@ -45,6 +45,8 @@ architecture behaviour of rv32i3stage_core_sim_test is
 
 	-- Exceção sinalizada pelo core sem Zicsr (um ciclo em '1'); com Zicsr fica em '0'.
 	signal core_trap       : std_logic;
+	-- Pulso de retirada de uma instrução em EX, contado pelo testbench para medir os ciclos por instrução.
+	signal core_retire : std_logic;
 	-- Causa da exceção sinalizada, no formato do mcause.
 	signal core_trap_cause : std_logic_vector(31 downto 0);
 	-- PC da instrução que gerou a exceção sinalizada.
@@ -99,6 +101,7 @@ begin
 		generic map (has_m => HAS_M, has_zmmul => HAS_ZMMUL, has_zicsr => HAS_ZICSR, has_zicclsm => HAS_ZICCLSM)
 		port map (
 			o_trap       => core_trap,
+			o_retire     => core_retire,
 			o_trap_cause => core_trap_cause,
 			o_trap_pc    => core_trap_pc,
 

@@ -60,6 +60,17 @@ EXTRA_CLOCKS = [
 ]
 
 
+def retired_now(dut) -> int:
+    """1 when an instruction retires on this clock edge, 0 otherwise.
+
+    The top exposes the retirement pulse of the core (valid in EX, pipeline advancing, no exception).
+    """
+    try:
+        return int(dut.core_retire.value == 1)
+    except (AttributeError, ValueError):
+        return 0
+
+
 async def read_model_word(dut, word_address: int) -> int:
     """The 32-bit word at a word address of the SDRAM chip model."""
     dut.DBG_WORD_ADDR.value = word_address
@@ -199,9 +210,13 @@ async def test_program(dut) -> None:
     uart_bytes: list[int] = []
     console_stop = [False]
     console = cocotb.start_soon(uart_console(dut, uart_bytes, console_stop))
+    core_cycles = 0
+    retired = 0
     while ticks[0] < TIMEOUT_CYCLES:
         await RisingEdge(sample_clock)
         cycles_used = ticks[0]
+        core_cycles += 1
+        retired += retired_now(dut)
 
         # a write of the data port that completes on this edge
         if (
@@ -224,6 +239,7 @@ async def test_program(dut) -> None:
         if wdata == MAILBOX_PASS:
             dut._log.info("PASS")
             dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
+            dut._log.info(f"CORE CYCLES {core_cycles} INSTRUCTIONS RETIRED {retired}")
             console_stop[0] = True
             await console
             await check_uart_stream(dut, uart_bytes)
