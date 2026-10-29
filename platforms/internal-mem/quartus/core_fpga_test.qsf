@@ -95,6 +95,8 @@ set_global_assignment -name VHDL_FILE ../../../../Core/M/non_restoring_divider_r
 set_global_assignment -name VHDL_FILE ../../../../Core/M/multdiv.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_decode.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_addr_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicntr/counter64.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicntr/tick_divider.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_file.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/trap_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zifencei/fencei_unit.vhd

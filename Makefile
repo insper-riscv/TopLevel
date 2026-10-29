@@ -7,7 +7,7 @@ PS    := platforms/sdram
 
 # The simulation top (rv32i3stage_core_sim_test) with the core and the simulation
 # memories: Core, Common-Components and Memory are cloned next to this repository.
-SIM_VHDL := $(shell find ../Common-Components/src ../Core/common ../Core/I ../Core/M ../Core/Zicsr ../Core/Zifencei ../Core/core ../Memory/sim -name '*.vhd' | sort) \
+SIM_VHDL := $(shell find ../Common-Components/src ../Core/common ../Core/I ../Core/M ../Core/Zicsr ../Core/Zicntr ../Core/Zifencei ../Core/core ../Memory/sim -name '*.vhd' | sort) \
             $(P)/rtl/clk_gen_3way.vhd $(P)/rtl/rv32i3stage_core_sim_test.vhd
 
 # The SDRAM platform's simulation top adds the SDRAM (bridge, controller, chip model) of Memory.
