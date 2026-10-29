@@ -222,7 +222,7 @@ begin
 
 	-- the SDRAM and its chip model; the debug ports of the model stay unused here
 	SDRAM : entity work.sdram_system
-		generic map (INIT_FILE => SDRAM_FILE)
+		generic map (init_file => SDRAM_FILE)
 		port map (
 			i_clk_mem => CLK_MEM, i_clk_cpu => pll_clk_idexmem,
 			i_rst_mem => reset,   i_rst_cpu => reset,
@@ -238,7 +238,7 @@ begin
 	);
 
 	BOOT_ROM : entity work.ROM_simulation
-		generic map (ROM_FILE => BOOT_ROM_FILE, memoryAddrWidth => boot_rom_addr_width)
+		generic map (rom_file => BOOT_ROM_FILE, memory_addr_width => boot_rom_addr_width)
 		port map (
 			i_addr 	=> if_addr(31 downto 2),
 			i_clk 	=> pll_clk_if,
@@ -247,7 +247,7 @@ begin
 	);
 
 	FLASH : entity work.ROM_simulation
-		generic map (ROM_FILE => ROM_FILE, memoryAddrWidth => rom_addr_width)
+		generic map (rom_file => ROM_FILE, memory_addr_width => rom_addr_width)
 		port map (
 			i_addr 	=> if_addr(31 downto 2),
 			i_clk 	=> pll_clk_if,

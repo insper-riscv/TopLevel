@@ -128,7 +128,7 @@ begin
   u_ctrl : entity work.sdram_ctrl
     -- the data pins go through one register in the IO cells, so the read data is
     -- sampled one clock later than at the pin
-    generic map (CAPTURE_EXTRA => 0)
+    generic map (capture_extra => 0)
     port map (
       clk => clk_mem, rst => rst_mem,
       req_tog => req_tog, ack_tog => ack_tog, init_done => init_done,

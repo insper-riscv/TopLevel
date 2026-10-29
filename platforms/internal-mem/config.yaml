@@ -268,8 +268,8 @@ sim:
     - ../Core/core/stage_mem.vhd
     - ../Core/core/stage_wb.vhd
     - ../Core/core/core.vhd
-    - ../Memory/sim/RAM_simulation.vhd
-    - ../Memory/sim/ROM_simulation.vhd
+    - ../Memory/sim/ram_simulation.vhd
+    - ../Memory/sim/rom_simulation.vhd
     - ../TopLevel/platforms/internal-mem/rtl/clk_gen_3way.vhd
     - ../TopLevel/platforms/internal-mem/rtl/rv32i3stage_core_sim_test.vhd
   # The cocotb testbench of the top lives in this repository; it is found

@@ -32,7 +32,7 @@ how the real hardware path only ever observes memory through a bus
 Unlike sim_runner's own ROM_HEX/TEST_NAME convention, this project's
 ROM_simulation entity loads the program image itself, via a VHDL
 generic (config.yaml's sim.parameters: ROM_FILE) read by a file-open
-process inside ROM_simulation.vhd at elaboration — so there's no
+process inside rom_simulation.vhd at elaboration — so there's no
 Python-side ROM poking here at all.
 
 The same module drives the hardware top (core_fpga_test, see
@@ -237,7 +237,7 @@ async def test_program(dut) -> None:
     cycles_used = 0
     # {RAM-relative byte address: byte value} — updated on every RAM
     # write seen on the bus, honoring ram_byteena the same way
-    # RAM_simulation.vhd itself does (mask bit i gates byte lane i of
+    # ram_simulation.vhd itself does (mask bit i gates byte lane i of
     # the 32-bit word at the write's own word-aligned address), so
     # this ends up an exact reconstruction of whatever RAM_simulation
     # actually stored — not just a record of the mailbox/results

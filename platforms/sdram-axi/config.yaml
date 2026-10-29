@@ -65,8 +65,8 @@ sim:
     - ../Core/core/stage_mem.vhd
     - ../Core/core/stage_wb.vhd
     - ../Core/core/core.vhd
-    - ../Memory/sim/RAM_simulation.vhd
-    - ../Memory/sim/ROM_simulation.vhd
+    - ../Memory/sim/ram_simulation.vhd
+    - ../Memory/sim/rom_simulation.vhd
     - ../Memory/external/sdram/sdram_pkg.vhd
     - ../Memory/external/sdram/sdram_ctrl.vhd
     - ../Memory/external/sdram/sdram_cpu_bridge.vhd

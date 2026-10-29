@@ -373,7 +373,7 @@ begin
 		-- the data pins go through one register in the IO cells (see the Quartus project); the clock
 		-- phase of the pin DRAM_CLK makes the read data arrive in time for the register without the
 		-- extra clock the simulation models for registered pins (found on the board, docs/SDRAM_BRINGUP.md)
-		generic map (CAPTURE_EXTRA => 0, SYNC_REQ => false)
+		generic map (capture_extra => 0, sync_req => false)
 		port map (
 			clk => pll_clk_mem, rst => rst_mem,
 			req_tog => req_tog, ack_tog => ack_tog, init_done => init_done,
