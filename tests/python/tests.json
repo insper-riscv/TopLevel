@@ -10,6 +10,7 @@
         "toplevel": "rv32im_sdram_sim_test",
         "sources": [
             "../Core/common/pipeline_types.vhd",
+            "../Core/common/byte_mask_consts.vhd",
             "../Core/common/opcode_consts.vhd",
             "../Core/common/funct3_consts.vhd",
             "../Core/common/funct7_consts.vhd",
@@ -94,6 +95,7 @@
         "toplevel": "rv32im_sdram_axi_sim_test",
         "sources": [
             "../Core/common/pipeline_types.vhd",
+            "../Core/common/byte_mask_consts.vhd",
             "../Core/common/opcode_consts.vhd",
             "../Core/common/funct3_consts.vhd",
             "../Core/common/funct7_consts.vhd",
@@ -182,6 +184,7 @@
         "toplevel": "rv32im_sdram_axi_sim_test",
         "sources": [
             "../Core/common/pipeline_types.vhd",
+            "../Core/common/byte_mask_consts.vhd",
             "../Core/common/opcode_consts.vhd",
             "../Core/common/funct3_consts.vhd",
             "../Core/common/funct7_consts.vhd",
@@ -270,6 +273,7 @@
         "toplevel": "rv32im_sdram_sim_test",
         "sources": [
             "../Core/common/pipeline_types.vhd",
+            "../Core/common/byte_mask_consts.vhd",
             "../Core/common/opcode_consts.vhd",
             "../Core/common/funct3_consts.vhd",
             "../Core/common/funct7_consts.vhd",

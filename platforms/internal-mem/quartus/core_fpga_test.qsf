@@ -61,6 +61,7 @@ set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name VERILOG_FILE ../pll/pll_0002.v
 set_global_assignment -name VHDL_FILE ../pll/pll.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/pipeline_types.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/byte_mask_consts.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/opcode_consts.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/funct3_consts.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/funct7_consts.vhd

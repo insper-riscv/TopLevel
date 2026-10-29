@@ -220,6 +220,7 @@ sim:
   # above for how the two relate).
   vhdl_sources:
     - ../Core/common/pipeline_types.vhd
+    - ../Core/common/byte_mask_consts.vhd
     - ../Core/common/opcode_consts.vhd
     - ../Core/common/funct3_consts.vhd
     - ../Core/common/funct7_consts.vhd
