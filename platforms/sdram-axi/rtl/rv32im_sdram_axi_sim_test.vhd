@@ -192,97 +192,97 @@ begin
 
 	ICACHE : entity work.icache
 		port map (
-			clk => pll_clk_if, rst => reset,
-			addr => if_addr, sel => ic_sel, ready => ic_ready, data => ic_data,
-			invalidate => ic_inval,
-			d_addr => id_addr, d_rden => id_rden, d_advance => id_adv, d_ready => id_ready,
-			d_rdata => id_rdata, d_line => id_line, d_rdata_x => id_rdx
+			i_clk => pll_clk_if, i_rst => reset,
+			i_addr => if_addr, i_sel => ic_sel, o_ready => ic_ready, o_data => ic_data,
+			i_invalidate => ic_inval,
+			o_d_addr => id_addr, o_d_rden => id_rden, o_d_advance => id_adv, i_d_ready => id_ready,
+			i_d_rdata => id_rdata, o_d_line => id_line, i_d_rdata_x => id_rdx
 	);
 
 	INTERCONNECT : entity work.ext_axi_interconnect
 		generic map (WRITE_THROUGH => WRITE_THROUGH)
 		port map (
-			clk => pll_clk_idexmem, rst => reset,
-			addr => sdram_addr, wdata => sdram_wdata, byteena => sdram_byteena,
-			rden => sdram_rden, wren => sdram_wren, mem_advance => mem_advance,
-			ready => sdram_ready, rdata => sdram_rdata,
-			flush => dc_flush, flush_done => dc_done, busy => dc_busy,
-			m0_awvalid => awvalid, m0_awready => awready, m0_awaddr => awaddr, m0_awlen => awlen,
-			m0_awsize => awsize, m0_awburst => awburst,
-			m0_wvalid => wvalid, m0_wready => wready, m0_wdata => wdata_a, m0_wstrb => wstrb, m0_wlast => wlast,
-			m0_bvalid => bvalid, m0_bready => bready, m0_bresp => bresp,
-			m0_arvalid => arvalid, m0_arready => arready, m0_araddr => araddr, m0_arlen => arlen,
-			m0_arsize => arsize, m0_arburst => arburst,
-			m0_rvalid => rvalid, m0_rready => rready, m0_rdata => rdata_a, m0_rresp => rresp, m0_rlast => rlast,
-			p_addr => p_addr, p_wdata => p_wdata, p_byteena => p_byteena,
-			p_we => p_we, p_re => p_re, p_rdata => p_rdata
+			i_clk => pll_clk_idexmem, i_rst => reset,
+			i_addr => sdram_addr, i_wdata => sdram_wdata, i_byteena => sdram_byteena,
+			i_rden => sdram_rden, i_wren => sdram_wren, i_mem_advance => mem_advance,
+			o_ready => sdram_ready, o_rdata => sdram_rdata,
+			i_flush => dc_flush, o_flush_done => dc_done, o_busy => dc_busy,
+			o_m0_awvalid => awvalid, i_m0_awready => awready, o_m0_awaddr => awaddr, o_m0_awlen => awlen,
+			o_m0_awsize => awsize, o_m0_awburst => awburst,
+			o_m0_wvalid => wvalid, i_m0_wready => wready, o_m0_wdata => wdata_a, o_m0_wstrb => wstrb, o_m0_wlast => wlast,
+			i_m0_bvalid => bvalid, o_m0_bready => bready, i_m0_bresp => bresp,
+			o_m0_arvalid => arvalid, i_m0_arready => arready, o_m0_araddr => araddr, o_m0_arlen => arlen,
+			o_m0_arsize => arsize, o_m0_arburst => arburst,
+			i_m0_rvalid => rvalid, o_m0_rready => rready, i_m0_rdata => rdata_a, i_m0_rresp => rresp, i_m0_rlast => rlast,
+			o_p_addr => p_addr, o_p_wdata => p_wdata, o_p_byteena => p_byteena,
+			o_p_we => p_we, o_p_re => p_re, i_p_rdata => p_rdata
 		);
 
 	-- the SDRAM end of the AXI4 bus: a slave in front of the bridge of the SDRAM system
 	SDRAM_SLAVE : entity work.axi_slave_word_bridge
 		port map (
-			clk => pll_clk_idexmem, rst => reset,
-			s_awvalid => awvalid, s_awready => awready, s_awaddr => awaddr, s_awlen => awlen,
-			s_awsize => awsize, s_awburst => awburst,
-			s_wvalid => wvalid, s_wready => wready, s_wdata => wdata_a, s_wstrb => wstrb, s_wlast => wlast,
-			s_bvalid => bvalid, s_bready => bready, s_bresp => bresp,
-			s_arvalid => arvalid, s_arready => arready, s_araddr => araddr, s_arlen => arlen,
-			s_arsize => arsize, s_arburst => arburst,
-			s_rvalid => rvalid, s_rready => rready, s_rdata => rdata_a, s_rresp => rresp, s_rlast => rlast,
-			addr => m_addr, wdata => m_wdata, byteena => m_byteena, rden => m_rden, wren => m_wren,
-			mem_advance => m_advance, ready => m_ready, rdata => m_rdata,
-			line => m_line, wdata_x => m_wdx, byteena_x => m_bex, rdata_x => m_rdx
+			i_clk => pll_clk_idexmem, i_rst => reset,
+			i_s_awvalid => awvalid, o_s_awready => awready, i_s_awaddr => awaddr, i_s_awlen => awlen,
+			i_s_awsize => awsize, i_s_awburst => awburst,
+			i_s_wvalid => wvalid, o_s_wready => wready, i_s_wdata => wdata_a, i_s_wstrb => wstrb, i_s_wlast => wlast,
+			o_s_bvalid => bvalid, i_s_bready => bready, o_s_bresp => bresp,
+			i_s_arvalid => arvalid, o_s_arready => arready, i_s_araddr => araddr, i_s_arlen => arlen,
+			i_s_arsize => arsize, i_s_arburst => arburst,
+			o_s_rvalid => rvalid, i_s_rready => rready, o_s_rdata => rdata_a, o_s_rresp => rresp, o_s_rlast => rlast,
+			o_addr => m_addr, o_wdata => m_wdata, o_byteena => m_byteena, o_rden => m_rden, o_wren => m_wren,
+			o_mem_advance => m_advance, i_ready => m_ready, i_rdata => m_rdata,
+			o_line => m_line, o_wdata_x => m_wdx, o_byteena_x => m_bex, i_rdata_x => m_rdx
 		);
 
 	UART : entity work.jtag_uart
 		port map (
-			clk => pll_clk_idexmem, rst => reset,
-			addr => p_addr, wdata => p_wdata, we => p_we(4), re => p_re(4),
-			rdata => p_rdata(32 * 4 + 31 downto 32 * 4),
-			tck => UART_TCK, tdi => UART_TDI, tdo => UART_TDO, ir_in => UART_IR_IN,
-			state_cdr => UART_STATE_CDR, state_sdr => UART_STATE_SDR,
-			state_udr => UART_STATE_UDR, state_uir => UART_STATE_UIR
+			i_clk => pll_clk_idexmem, i_rst => reset,
+			i_addr => p_addr, i_wdata => p_wdata, i_we => p_we(4), i_re => p_re(4),
+			o_rdata => p_rdata(32 * 4 + 31 downto 32 * 4),
+			i_tck => UART_TCK, i_tdi => UART_TDI, o_tdo => UART_TDO, i_ir_in => UART_IR_IN,
+			i_state_cdr => UART_STATE_CDR, i_state_sdr => UART_STATE_SDR,
+			i_state_udr => UART_STATE_UDR, i_state_uir => UART_STATE_UIR
 		);
 
 	-- the SDRAM and its chip model; the debug ports of the model stay unused here
 	SDRAM : entity work.sdram_system
 		generic map (INIT_FILE => SDRAM_FILE)
 		port map (
-			clk_mem => CLK_MEM, clk_cpu => pll_clk_idexmem,
-			rst_mem => reset,   rst_cpu => reset,
-			addr => m_addr, wdata => m_wdata, byteena => m_byteena,
-			rden => m_rden, wren => m_wren, mem_advance => m_advance,
-			ready => m_ready, rdata => m_rdata,
-			line => m_line, wdata_x => m_wdx, byteena_x => m_bex, rdata_x => m_rdx,
-			i_addr => id_addr, i_rden => id_rden, i_advance => id_adv, i_ready => id_ready,
-			i_rdata => id_rdata, i_line => id_line, i_rdata_x => id_rdx,
-			init_done => sdram_init,
-			dbg_word_addr => DBG_WORD_ADDR, dbg_word_data => DBG_WORD_DATA,
-			dbg_flip => '0', dbg_flip_addr => (others => '0'), dbg_flip_bit => (others => '0'),
-			dbg_refreshes => dbg_refreshes, dbg_init_ok => dbg_init_ok
+			i_clk_mem => CLK_MEM, i_clk_cpu => pll_clk_idexmem,
+			i_rst_mem => reset,   i_rst_cpu => reset,
+			i_addr => m_addr, i_wdata => m_wdata, i_byteena => m_byteena,
+			i_rden => m_rden, i_wren => m_wren, i_mem_advance => m_advance,
+			o_ready => m_ready, o_rdata => m_rdata,
+			i_line => m_line, i_wdata_x => m_wdx, i_byteena_x => m_bex, o_rdata_x => m_rdx,
+			i_ins_addr => id_addr, i_ins_rden => id_rden, i_ins_advance => id_adv, o_ins_ready => id_ready,
+			o_ins_rdata => id_rdata, i_ins_line => id_line, o_ins_rdata_x => id_rdx,
+			o_init_done => sdram_init,
+			i_dbg_word_addr => DBG_WORD_ADDR, o_dbg_word_data => DBG_WORD_DATA,
+			i_dbg_flip => '0', i_dbg_flip_addr => (others => '0'), i_dbg_flip_bit => (others => '0'),
+			o_dbg_refreshes => dbg_refreshes, o_dbg_init_ok => dbg_init_ok
 	);
 
 	BOOT_ROM : entity work.ROM_simulation
 		generic map (ROM_FILE => BOOT_ROM_FILE, memoryAddrWidth => boot_rom_addr_width)
 		port map (
-			addr 	=> if_addr(31 downto 2),
-			clk 	=> pll_clk_if,
-			re 		=> if_rden,
-			data	=> boot_rom_data
+			i_addr 	=> if_addr(31 downto 2),
+			i_clk 	=> pll_clk_if,
+			i_re 		=> if_rden,
+			o_data	=> boot_rom_data
 	);
 
 	FLASH : entity work.ROM_simulation
 		generic map (ROM_FILE => ROM_FILE, memoryAddrWidth => rom_addr_width)
 		port map (
-			addr 	=> if_addr(31 downto 2),
-			clk 	=> pll_clk_if,
-			re 		=> if_rden,
-			data	=> flash_data,
+			i_addr 	=> if_addr(31 downto 2),
+			i_clk 	=> pll_clk_if,
+			i_re 		=> if_rden,
+			o_data	=> flash_data,
 
-			addr2 	=> flash_addr2(31 downto 2),
-			clk2 	=> pll_clk_idexmem,
-			re2 	=> flash_rden2,
-			data2	=> flash_data2
+			i_addr2 	=> flash_addr2(31 downto 2),
+			i_clk2 	=> pll_clk_idexmem,
+			i_re2 	=> flash_rden2,
+			o_data2	=> flash_data2
 	);
 
 end architecture;

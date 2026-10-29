@@ -110,7 +110,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_mem.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/core/stage_wb.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/core/core.vhd
 set_global_assignment -name VHDL_FILE ../rtl/Blinky.vhd
-set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/UART.vhd
+set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/uart.vhd
 set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd
 set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/uartTx.vhd
 set_global_assignment -name VHDL_FILE ../../../../Peripherals/UART/vendor/opencores_uart2bus/uartRx.vhd

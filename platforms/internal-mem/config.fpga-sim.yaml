@@ -113,5 +113,5 @@ sim:
     - ../Peripherals/UART/vendor/opencores_uart2bus/uartRx.vhd
     - ../Peripherals/UART/vendor/opencores_uart2bus/uartTx.vhd
     - ../Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd
-    - ../Peripherals/UART/UART.vhd
+    - ../Peripherals/UART/uart.vhd
     - ../TopLevel/platforms/internal-mem/quartus/core_fpga_test.vhd

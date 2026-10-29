@@ -181,33 +181,33 @@ begin
 
 	ICACHE : entity work.icache
 		port map (
-			clk => pll_clk_if, rst => reset,
-			addr => if_addr, sel => ic_sel, ready => ic_ready, data => ic_data,
-			invalidate => ic_inval,
-			d_addr => id_addr, d_rden => id_rden, d_advance => id_adv, d_ready => id_ready,
-			d_rdata => id_rdata, d_line => id_line, d_rdata_x => id_rdx
+			i_clk => pll_clk_if, i_rst => reset,
+			i_addr => if_addr, i_sel => ic_sel, o_ready => ic_ready, o_data => ic_data,
+			i_invalidate => ic_inval,
+			o_d_addr => id_addr, o_d_rden => id_rden, o_d_advance => id_adv, i_d_ready => id_ready,
+			i_d_rdata => id_rdata, o_d_line => id_line, i_d_rdata_x => id_rdx
 	);
 
 	INTERCONNECT : entity work.ext_interconnect
 		port map (
-			clk => pll_clk_idexmem, rst => reset,
-			addr => sdram_addr, wdata => sdram_wdata, byteena => sdram_byteena,
-			rden => sdram_rden, wren => sdram_wren, mem_advance => mem_advance,
-			ready => sdram_ready, rdata => sdram_rdata,
-			m_addr => m_addr, m_wdata => m_wdata, m_byteena => m_byteena,
-			m_rden => m_rden, m_wren => m_wren, m_ready => m_ready, m_rdata => m_rdata,
-			p_addr => p_addr, p_wdata => p_wdata, p_byteena => p_byteena,
-			p_we => p_we, p_re => p_re, p_rdata => p_rdata
+			i_clk => pll_clk_idexmem, i_rst => reset,
+			i_addr => sdram_addr, i_wdata => sdram_wdata, i_byteena => sdram_byteena,
+			i_rden => sdram_rden, i_wren => sdram_wren, i_mem_advance => mem_advance,
+			o_ready => sdram_ready, o_rdata => sdram_rdata,
+			o_m_addr => m_addr, o_m_wdata => m_wdata, o_m_byteena => m_byteena,
+			o_m_rden => m_rden, o_m_wren => m_wren, i_m_ready => m_ready, i_m_rdata => m_rdata,
+			o_p_addr => p_addr, o_p_wdata => p_wdata, o_p_byteena => p_byteena,
+			o_p_we => p_we, o_p_re => p_re, i_p_rdata => p_rdata
 		);
 
 	UART : entity work.jtag_uart
 		port map (
-			clk => pll_clk_idexmem, rst => reset,
-			addr => p_addr, wdata => p_wdata, we => p_we(4), re => p_re(4),
-			rdata => p_rdata(32 * 4 + 31 downto 32 * 4),
-			tck => UART_TCK, tdi => UART_TDI, tdo => UART_TDO, ir_in => UART_IR_IN,
-			state_cdr => UART_STATE_CDR, state_sdr => UART_STATE_SDR,
-			state_udr => UART_STATE_UDR, state_uir => UART_STATE_UIR
+			i_clk => pll_clk_idexmem, i_rst => reset,
+			i_addr => p_addr, i_wdata => p_wdata, i_we => p_we(4), i_re => p_re(4),
+			o_rdata => p_rdata(32 * 4 + 31 downto 32 * 4),
+			i_tck => UART_TCK, i_tdi => UART_TDI, o_tdo => UART_TDO, i_ir_in => UART_IR_IN,
+			i_state_cdr => UART_STATE_CDR, i_state_sdr => UART_STATE_SDR,
+			i_state_udr => UART_STATE_UDR, i_state_uir => UART_STATE_UIR
 		);
 
 	DISPLAY : entity work.seg_display
@@ -224,40 +224,40 @@ begin
 	SDRAM : entity work.sdram_system
 		generic map (INIT_FILE => SDRAM_FILE)
 		port map (
-			clk_mem => CLK_MEM, clk_cpu => pll_clk_idexmem,
-			rst_mem => reset,   rst_cpu => reset,
-			addr => m_addr, wdata => m_wdata, byteena => m_byteena,
-			rden => m_rden, wren => m_wren, mem_advance => mem_advance,
-			ready => m_ready, rdata => m_rdata,
-			i_addr => id_addr, i_rden => id_rden, i_advance => id_adv, i_ready => id_ready,
-			i_rdata => id_rdata, i_line => id_line, i_rdata_x => id_rdx,
-			init_done => sdram_init,
-			dbg_word_addr => DBG_WORD_ADDR, dbg_word_data => DBG_WORD_DATA,
-			dbg_flip => '0', dbg_flip_addr => (others => '0'), dbg_flip_bit => (others => '0'),
-			dbg_refreshes => dbg_refreshes, dbg_init_ok => dbg_init_ok
+			i_clk_mem => CLK_MEM, i_clk_cpu => pll_clk_idexmem,
+			i_rst_mem => reset,   i_rst_cpu => reset,
+			i_addr => m_addr, i_wdata => m_wdata, i_byteena => m_byteena,
+			i_rden => m_rden, i_wren => m_wren, i_mem_advance => mem_advance,
+			o_ready => m_ready, o_rdata => m_rdata,
+			i_ins_addr => id_addr, i_ins_rden => id_rden, i_ins_advance => id_adv, o_ins_ready => id_ready,
+			o_ins_rdata => id_rdata, i_ins_line => id_line, o_ins_rdata_x => id_rdx,
+			o_init_done => sdram_init,
+			i_dbg_word_addr => DBG_WORD_ADDR, o_dbg_word_data => DBG_WORD_DATA,
+			i_dbg_flip => '0', i_dbg_flip_addr => (others => '0'), i_dbg_flip_bit => (others => '0'),
+			o_dbg_refreshes => dbg_refreshes, o_dbg_init_ok => dbg_init_ok
 	);
 
 	BOOT_ROM : entity work.ROM_simulation
 		generic map (ROM_FILE => BOOT_ROM_FILE, memoryAddrWidth => boot_rom_addr_width)
 		port map (
-			addr 	=> if_addr(31 downto 2),
-			clk 	=> pll_clk_if,
-			re 		=> if_rden,
-			data	=> boot_rom_data
+			i_addr 	=> if_addr(31 downto 2),
+			i_clk 	=> pll_clk_if,
+			i_re 		=> if_rden,
+			o_data	=> boot_rom_data
 	);
 
 	FLASH : entity work.ROM_simulation
 		generic map (ROM_FILE => ROM_FILE, memoryAddrWidth => rom_addr_width)
 		port map (
-			addr 	=> if_addr(31 downto 2),
-			clk 	=> pll_clk_if,
-			re 		=> if_rden,
-			data	=> flash_data,
+			i_addr 	=> if_addr(31 downto 2),
+			i_clk 	=> pll_clk_if,
+			i_re 		=> if_rden,
+			o_data	=> flash_data,
 
-			addr2 	=> flash_addr2(31 downto 2),
-			clk2 	=> pll_clk_idexmem,
-			re2 	=> flash_rden2,
-			data2	=> flash_data2
+			i_addr2 	=> flash_addr2(31 downto 2),
+			i_clk2 	=> pll_clk_idexmem,
+			i_re2 	=> flash_rden2,
+			o_data2	=> flash_data2
 	);
 
 end architecture;

@@ -140,37 +140,37 @@ begin
 	BOOT_ROM : entity work.ROM_simulation
 		generic map (ROM_FILE => BOOT_ROM_FILE, memoryAddrWidth => boot_rom_addr_width)
 		port map (
-			addr 	=> if_addr(31 downto 2),
-			clk 	=> pll_clk_if,
-			re 		=> if_rden,
-			data	=> boot_rom_data
+			i_addr 	=> if_addr(31 downto 2),
+			i_clk 	=> pll_clk_if,
+			i_re 		=> if_rden,
+			o_data	=> boot_rom_data
 	);
 
 	FLASH : entity work.ROM_simulation
 		generic map (ROM_FILE => ROM_FILE, memoryAddrWidth => rom_addr_width)
 		port map (
-			addr 	=> if_addr(31 downto 2),
-			clk 	=> pll_clk_if,
-			re 		=> if_rden,
-			data	=> flash_data,
+			i_addr 	=> if_addr(31 downto 2),
+			i_clk 	=> pll_clk_if,
+			i_re 		=> if_rden,
+			o_data	=> flash_data,
 
-			addr2 	=> flash_addr2(31 downto 2),
-			clk2 	=> pll_clk_idexmem,
-			re2 	=> flash_rden2,
-			data2	=> flash_data2
+			i_addr2 	=> flash_addr2(31 downto 2),
+			i_clk2 	=> pll_clk_idexmem,
+			i_re2 	=> flash_rden2,
+			o_data2	=> flash_data2
 	);
 
 	RAM : entity work.RAM_simulation
 		generic map (memoryAddrWidth => ram_addr_width, RAM_FILE => RAM_FILE)
 		port map(
-			addr 		=> ram_addr(31 downto 2), -- word addressable
-			mask 		=> ram_byteena,
-			clk		 	=> pll_clk_idexmem,
-			data_in 	=> ram_wdata,
-			reRAM 		=> ram_re_gated,
-			weRAM 		=> ram_we_gated,
-			eRAM 		=> ram_en,
-			data_out 	=> ram_rdata
+			i_addr 		=> ram_addr(31 downto 2), -- word addressable
+			i_mask 		=> ram_byteena,
+			i_clk		 	=> pll_clk_idexmem,
+			i_data_in 	=> ram_wdata,
+			i_re_ram 		=> ram_re_gated,
+			i_we_ram 		=> ram_we_gated,
+			i_en_ram 		=> ram_en,
+			o_data_out 	=> ram_rdata
 	);
 
 end architecture;

@@ -152,16 +152,16 @@ begin
 			DATA_WIDTH => 32
 		)
 		port map (
-			clock    => pll_clk_idexmem,
-			clear    => core_reset,
-			data_in  => ram_wdata,
-			address  => ram_addr(3 downto 2),
-			write    => uart_write,
-			read     => uart_read,
-			data_out => uart_rdata,
-			irq      => open,
-			uart_rx  => UART_RX,
-			uart_tx  => UART_TX
+			i_clk    => pll_clk_idexmem,
+			i_rst    => core_reset,
+			i_data_in  => ram_wdata,
+			i_address  => ram_addr(3 downto 2),
+			i_write    => uart_write,
+			i_read     => uart_read,
+			o_data_out => uart_rdata,
+			o_irq      => open,
+			i_uart_rx  => UART_RX,
+			o_uart_tx  => UART_TX
 		);
 
 	UART_READ_PIPELINE : process (core_reset, pll_clk_idexmem)

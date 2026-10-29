@@ -222,23 +222,23 @@ begin
 	-- instruction of the PC is there in the same cycle the core samples it, as for the ROMs
 	ICACHE : entity work.icache
 		port map (
-			clk => pll_clk_if, rst => core_reset,
-			addr => if_addr, sel => ic_sel, ready => ic_ready, data => ic_data,
-			invalidate => ic_inval,
-			d_addr => id_addr, d_rden => id_rden, d_advance => id_adv, d_ready => id_ready,
-			d_rdata => id_rdata, d_line => id_line, d_rdata_x => id_rdx
+			i_clk => pll_clk_if, i_rst => core_reset,
+			i_addr => if_addr, i_sel => ic_sel, o_ready => ic_ready, o_data => ic_data,
+			i_invalidate => ic_inval,
+			o_d_addr => id_addr, o_d_rden => id_rden, o_d_advance => id_adv, i_d_ready => id_ready,
+			i_d_rdata => id_rdata, o_d_line => id_line, i_d_rdata_x => id_rdx
 		);
 
 	IBRIDGE : entity work.sdram_cpu_bridge
 		port map (
-			clk_cpu => pll_clk_idexmem, rst_cpu => core_reset,
-			addr => id_addr, wdata => (others => '0'), byteena => (others => '0'),
-			rden => id_rden, wren => '0', mem_advance => id_adv,
-			ready => id_ready, rdata => id_rdata,
-			line => id_line, wdata_x => (others => '0'), byteena_x => (others => '0'), rdata_x => id_rdx,
-			req_tog => i_req, ack_tog => i_ack, init_done => init_done,
-			c_we => i_we, c_addr => i_addr, c_wdata => i_wdata, c_be => i_be, c_rdata => i_rdata,
-			c_line => i_line, c_wdata_x => i_wdx, c_be_x => i_bex, c_rdata_x => i_rdx
+			i_clk_cpu => pll_clk_idexmem, i_rst_cpu => core_reset,
+			i_addr => id_addr, i_wdata => (others => '0'), i_byteena => (others => '0'),
+			i_rden => id_rden, i_wren => '0', i_mem_advance => id_adv,
+			o_ready => id_ready, o_rdata => id_rdata,
+			i_line => id_line, i_wdata_x => (others => '0'), i_byteena_x => (others => '0'), o_rdata_x => id_rdx,
+			o_req_tog => i_req, i_ack_tog => i_ack, i_init_done => init_done,
+			o_c_we => i_we, o_c_addr => i_addr, o_c_wdata => i_wdata, o_c_be => i_be, i_c_rdata => i_rdata,
+			o_c_line => i_line, o_c_wdata_x => i_wdx, o_c_be_x => i_bex, i_c_rdata_x => i_rdx
 		);
 
 	BOOT_ROM : entity work.boot_rom1port
@@ -276,22 +276,22 @@ begin
 	-- the core's external port: bit 31 = 0 is the SDRAM, bit 31 = 1 a peripheral window
 	INTERCONNECT : entity work.ext_interconnect
 		port map (
-			clk => pll_clk_idexmem, rst => core_reset,
-			addr => sdram_addr, wdata => sdram_wdata, byteena => sdram_byteena,
-			rden => sdram_rden, wren => sdram_wren, mem_advance => mem_advance,
-			ready => sdram_ready, rdata => sdram_rdata,
-			m_addr => m_addr, m_wdata => m_wdata, m_byteena => m_byteena,
-			m_rden => m_rden, m_wren => m_wren, m_ready => m_ready, m_rdata => m_rdata,
-			p_addr => p_addr, p_wdata => p_wdata, p_byteena => p_byteena,
-			p_we => p_we, p_re => p_re, p_rdata => p_rdata
+			i_clk => pll_clk_idexmem, i_rst => core_reset,
+			i_addr => sdram_addr, i_wdata => sdram_wdata, i_byteena => sdram_byteena,
+			i_rden => sdram_rden, i_wren => sdram_wren, i_mem_advance => mem_advance,
+			o_ready => sdram_ready, o_rdata => sdram_rdata,
+			o_m_addr => m_addr, o_m_wdata => m_wdata, o_m_byteena => m_byteena,
+			o_m_rden => m_rden, o_m_wren => m_wren, i_m_ready => m_ready, i_m_rdata => m_rdata,
+			o_p_addr => p_addr, o_p_wdata => p_wdata, o_p_byteena => p_byteena,
+			o_p_we => p_we, o_p_re => p_re, i_p_rdata => p_rdata
 		);
 
 	-- the UART whose other end is a host on JTAG (0xC0000000)
 	JTAG_UART : entity work.jtag_uart_shell
 		port map (
-			clk => pll_clk_idexmem, rst => core_reset,
-			addr => p_addr, wdata => p_wdata, we => p_we(4), re => p_re(4),
-			rdata => p_rdata(32 * 4 + 31 downto 32 * 4)
+			i_clk => pll_clk_idexmem, i_rst => core_reset,
+			i_addr => p_addr, i_wdata => p_wdata, i_we => p_we(4), i_re => p_re(4),
+			o_rdata => p_rdata(32 * 4 + 31 downto 32 * 4)
 		);
 
 	-- the seven-segment display and its host port (0xD0000000)
@@ -315,45 +315,45 @@ begin
 
 	SDRAM_BRIDGE : entity work.sdram_cpu_bridge
 		port map (
-			clk_cpu => pll_clk_idexmem, rst_cpu => core_reset,
-			addr => m_addr, wdata => m_wdata, byteena => m_byteena,
-			rden => m_rden, wren => m_wren, mem_advance => mem_advance,
-			ready => m_ready, rdata => m_rdata,
-			req_tog => a_req, ack_tog => a_ack, init_done => init_done,
-			c_we => a_we, c_addr => a_addr, c_wdata => a_wdata, c_be => a_be, c_rdata => a_rdata,
-			c_line => a_line, c_wdata_x => a_wdx, c_be_x => a_bex, c_rdata_x => a_rdx
+			i_clk_cpu => pll_clk_idexmem, i_rst_cpu => core_reset,
+			i_addr => m_addr, i_wdata => m_wdata, i_byteena => m_byteena,
+			i_rden => m_rden, i_wren => m_wren, i_mem_advance => mem_advance,
+			o_ready => m_ready, o_rdata => m_rdata,
+			o_req_tog => a_req, i_ack_tog => a_ack, i_init_done => init_done,
+			o_c_we => a_we, o_c_addr => a_addr, o_c_wdata => a_wdata, o_c_be => a_be, i_c_rdata => a_rdata,
+			o_c_line => a_line, o_c_wdata_x => a_wdx, o_c_be_x => a_bex, i_c_rdata_x => a_rdx
 		);
 
 	SDRAM_ARBITER : entity work.sdram_arbiter
 		port map (
-			clk => pll_clk_mem, rst => rst_mem,
-			a_req_tog => a_req, a_ack_tog => a_ack, a_we => a_we, a_addr => a_addr,
-			a_wdata => a_wdata, a_be => a_be, a_rdata => a_rdata,
-			a_line => a_line, a_wdata_x => a_wdx, a_be_x => a_bex, a_rdata_x => a_rdx,
-			i_req_tog => i_req, i_ack_tog => i_ack, i_we => i_we, i_addr => i_addr,
-			i_wdata => i_wdata, i_be => i_be, i_rdata => i_rdata,
-			i_line => i_line, i_wdata_x => i_wdx, i_be_x => i_bex, i_rdata_x => i_rdx,
-			b_req_tog => b_req, b_ack_tog => b_ack, b_we => b_we, b_addr => b_addr,
-			b_wdata => b_wdata, b_be => b_be, b_rdata => b_rdata,
-			c_req_tog => req_tog, c_ack_tog => ack_tog, c_we => c_we, c_addr => c_addr,
-			c_wdata => c_wdata, c_be => c_be, c_rdata => c_rdata,
-			c_line => c_line, c_wdata_x => c_wdx, c_be_x => c_bex, c_rdata_x => c_rdx
+			i_clk => pll_clk_mem, i_rst => rst_mem,
+			i_a_req_tog => a_req, o_a_ack_tog => a_ack, i_a_we => a_we, i_a_addr => a_addr,
+			i_a_wdata => a_wdata, i_a_be => a_be, o_a_rdata => a_rdata,
+			i_a_line => a_line, i_a_wdata_x => a_wdx, i_a_be_x => a_bex, o_a_rdata_x => a_rdx,
+			i_ins_req_tog => i_req, o_ins_ack_tog => i_ack, i_ins_we => i_we, i_ins_addr => i_addr,
+			i_ins_wdata => i_wdata, i_ins_be => i_be, o_ins_rdata => i_rdata,
+			i_ins_line => i_line, i_ins_wdata_x => i_wdx, i_ins_be_x => i_bex, o_ins_rdata_x => i_rdx,
+			i_b_req_tog => b_req, o_b_ack_tog => b_ack, i_b_we => b_we, i_b_addr => b_addr,
+			i_b_wdata => b_wdata, i_b_be => b_be, o_b_rdata => b_rdata,
+			o_c_req_tog => req_tog, i_c_ack_tog => ack_tog, o_c_we => c_we, o_c_addr => c_addr,
+			o_c_wdata => c_wdata, o_c_be => c_be, i_c_rdata => c_rdata,
+			o_c_line => c_line, o_c_wdata_x => c_wdx, o_c_be_x => c_bex, i_c_rdata_x => c_rdx
 		);
 
 	SDRAM_DEBUG : entity work.sdram_dbg_master
 		port map (
-			clk => pll_clk_mem, rst => rst_mem,
-			cmd_tog => cmd_tog, done_tog => done_tog, op => d_op, be => d_be, addr => d_addr, data => d_data,
-			rsp_addr => r_addr, rsp_data => r_data, rsp_status => r_status,
-			init_done => init_done,
-			b_req_tog => b_req, b_ack_tog => b_ack, b_we => b_we, b_addr => b_addr,
-			b_wdata => b_wdata, b_be => b_be, b_rdata => b_rdata
+			i_clk => pll_clk_mem, i_rst => rst_mem,
+			i_cmd_tog => cmd_tog, o_done_tog => done_tog, i_op => d_op, i_be => d_be, i_addr => d_addr, i_data => d_data,
+			o_rsp_addr => r_addr, o_rsp_data => r_data, o_rsp_status => r_status,
+			i_init_done => init_done,
+			o_b_req_tog => b_req, i_b_ack_tog => b_ack, o_b_we => b_we, o_b_addr => b_addr,
+			o_b_wdata => b_wdata, o_b_be => b_be, i_b_rdata => b_rdata
 		);
 
 	SDRAM_JTAG : entity work.sdram_jtag_shell
 		port map (
-			cmd_tog => cmd_tog, op => d_op, be => d_be, addr => d_addr, data => d_data,
-			done_tog => done_tog, rsp_addr => r_addr, rsp_data => r_data, rsp_status => r_status
+			o_cmd_tog => cmd_tog, o_op => d_op, o_be => d_be, o_addr => d_addr, o_data => d_data,
+			i_done_tog => done_tog, i_rsp_addr => r_addr, i_rsp_data => r_data, i_rsp_status => r_status
 		);
 
 	-- the controller is reset while the PLL is not locked or the button is pressed, released in

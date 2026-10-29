@@ -152,12 +152,12 @@ begin
 
   u_bist : entity work.sdram_bist
     port map (
-      clk => clk_mem, rst => rst_mem, start => start, mode => mode, init_done => init_done,
-      busy => busy, done => done, fail => fail, timeout => timeout, phase => phase,
-      err_count => err_count, first_addr => first_addr, first_exp => first_exp,
-      first_got => first_got, ops_done => ops_done,
-      c_req_tog => req_tog, c_ack_tog => ack_tog, c_we => c_we, c_addr => c_addr,
-      c_wdata => c_wdata, c_be => c_be, c_rdata => c_rdata
+      i_clk => clk_mem, i_rst => rst_mem, i_start => start, i_mode => mode, i_init_done => init_done,
+      o_busy => busy, o_done => done, o_fail => fail, o_timeout => timeout, o_phase => phase,
+      o_err_count => err_count, o_first_addr => first_addr, o_first_exp => first_exp,
+      o_first_got => first_got, o_ops_done => ops_done,
+      o_c_req_tog => req_tog, i_c_ack_tog => ack_tog, o_c_we => c_we, o_c_addr => c_addr,
+      o_c_wdata => c_wdata, o_c_be => c_be, i_c_rdata => c_rdata
     );
 
   LEDR(0)          <= locked;
