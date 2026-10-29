@@ -219,42 +219,58 @@ sim:
   # to this project's own root, not RV32IM's (see quartus.project_dir
   # above for how the two relate).
   vhdl_sources:
-    - ../Core/common/rv32i_ctrl_consts.vhd
-    - ../Core/common/rv32im_pipeline_types.vhd
-    - ../Core/common/genericRegister.vhd
-    - ../Core/common/genericAdder.vhd
-    - ../Core/common/genericAdderU.vhd
-    - ../Core/common/genericMux2x1.vhd
-    - ../Core/common/genericMux3x1.vhd
-    - ../Core/common/FlipFlop.vhd
-    - ../Core/I/ALU.vhd
-    - ../Core/common/RegFile.vhd
-    - ../Memory/sim/RAM_simulation.vhd
-    - ../Memory/sim/ROM_simulation.vhd
-    - ../Core/common/InstructionDecoder.vhd
-    - ../Core/I/ExtenderImm.vhd
-    - ../Core/I/ExtenderRAM.vhd
-    - ../Core/I/StoreManager.vhd
-    - ../TopLevel/platforms/internal-mem/rtl/clk_gen_3way.vhd
+    - ../Core/common/pipeline_types.vhd
+    - ../Core/common/byte_mask_consts.vhd
+    - ../Core/common/opcode_consts.vhd
+    - ../Core/common/funct3_consts.vhd
+    - ../Core/common/funct7_consts.vhd
+    - ../Core/common/alu_consts.vhd
+    - ../Core/common/ext_imm_consts.vhd
+    - ../Core/common/ext_ram_consts.vhd
+    - ../Core/common/wb_sel_consts.vhd
+    - ../Core/common/pc_src_consts.vhd
+    - ../Core/common/mem_map_consts.vhd
+    - ../Common-Components/src/generic_register.vhd
+    - ../Common-Components/src/adder.vhd
+    - ../Common-Components/src/mux_2x1.vhd
+    - ../Common-Components/src/mux_4x1.vhd
+    - ../Common-Components/src/flip_flop.vhd
+    - ../Common-Components/src/utils_pkg.vhd
+    - ../Core/I/alu.vhd
+    - ../Common-Components/src/onehot_decoder.vhd
+    - ../Common-Components/src/mux_tree.vhd
+    - ../Core/common/reg_file.vhd
+    - ../Core/I/extender_imm.vhd
+    - ../Core/I/extender_ram.vhd
+    - ../Core/I/store_manager.vhd
+    - ../Core/I/misaligned_unit.vhd
     - ../Core/common/control_unit.vhd
     - ../Core/common/bubble_mux.vhd
     - ../Core/common/forwarding_unit.vhd
     - ../Core/common/hazard_detection_unit.vhd
-    - ../Core/common/extendSigned.vhd
-    - ../Core/M/decoderM.vhd
     - ../Core/M/m_decode.vhd
     - ../Core/M/booth_multiplier_rv32.vhd
     - ../Core/M/non_restoring_divider_rv32.vhd
-    - ../Core/M/mult.vhd
-    - ../Core/M/div.vhd
-    - ../Core/M/divu.vhd
     - ../Core/M/multdiv.vhd
+    - ../Core/Zicsr/csr_decode.vhd
+    - ../Core/Zicsr/csr_addr_consts.vhd
+    - ../Core/Zicsr/csr_file.vhd
+    - ../Core/Zicsr/trap_unit.vhd
+    - ../Core/Zifencei/fencei_unit.vhd
     - ../Core/common/pc_fetch.vhd
-    - ../Core/common/reg_IF_ID.vhd
-    - ../Core/common/reg_ID_EX.vhd
-    - ../Core/common/reg_EX_MEM.vhd
-    - ../Core/common/reg_MEM_WB.vhd
-    - ../Core/cores/rv32im_pipeline_core.vhd
+    - ../Core/common/reg_if_id.vhd
+    - ../Core/common/reg_id_ex.vhd
+    - ../Core/common/reg_ex_mem.vhd
+    - ../Core/common/reg_mem_wb.vhd
+    - ../Core/core/stage_if.vhd
+    - ../Core/core/stage_id.vhd
+    - ../Core/core/stage_ex.vhd
+    - ../Core/core/stage_mem.vhd
+    - ../Core/core/stage_wb.vhd
+    - ../Core/core/core.vhd
+    - ../Memory/sim/ram_simulation.vhd
+    - ../Memory/sim/rom_simulation.vhd
+    - ../TopLevel/platforms/internal-mem/rtl/clk_gen_3way.vhd
     - ../TopLevel/platforms/internal-mem/rtl/rv32i3stage_core_sim_test.vhd
   # The cocotb testbench of the top lives in this repository; it is found
   # through python_path, which names it relative to the project that extends
@@ -284,6 +300,7 @@ sim:
     boot_rom_addr_width: "9"
     rom_addr_width: "13"
     ram_addr_width: "16"
+    HAS_ZICSR: true
 
 # Spike runs each test's own image, which starts at the crt0's _start.
 # On the hardware that image ends in rv32_wait_restart, a routine of the

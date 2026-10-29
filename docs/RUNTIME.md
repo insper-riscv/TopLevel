@@ -4,7 +4,7 @@ Este projeto não tem `crt0` nem linker script próprios. Um programa C (ou asse
 
 ## 1. De onde vêm o linker script e o crt0
 
-Ambos estão na toolchain da imagem `ghcr.io/insper-riscv/infra-toolchain` (a mesma instalação de `GCC_SETUP.md` do Infra, em `/opt/riscv-foundation/riscv32-elf`, com a picolibc do `riscv-gnu-toolchain`; o commit fica no `.tag` da instalação):
+Ambos estão na toolchain da imagem `ghcr.io/insper-riscv/ci-elf` (a mesma instalação de `GCC_SETUP.md` do Infra, em `/opt/riscv-foundation/riscv32-elf`, com a picolibc do `riscv-gnu-toolchain`; o commit fica no `.tag` da instalação):
 
 | Peça | Arquivo na toolchain | Como chega ao link |
 | :--- | :--- | :--- |

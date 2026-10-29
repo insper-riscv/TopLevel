@@ -21,7 +21,7 @@ O PLL real (`platforms/internal-mem/pll/pll.vhd`) envolve uma IP `altera_pll` cu
 
 1. A biblioteca de simulação do Quartus: `altera_mf_components.vhd` e `altera_mf.vhd`, em `<Quartus>/eda/sim_lib/`. Ela vem com o Quartus, então este perfil roda onde o Quartus está instalado, e não em um runner hospedado do GitHub.
 2. A variável `QUARTUS_ROOTDIR` apontando para o diretório `quartus` da instalação (por exemplo `/opt/altera_lite/25.1std/quartus`).
-3. O GHDL, o GCC com picolibc e o Spike, como no sim padrão (a imagem `infra-toolchain` tem os três).
+3. O GHDL, o GCC com picolibc e o Spike, como no sim padrão (a imagem `ci-elf` tem os três).
 4. Os checkouts do Core, do Memory, do Peripherals e do TopLevel ao lado do projeto de testes (`../Core`, `../Memory`, `../Peripherals`, `../TopLevel`), como no `sim-fpga.yml`.
 
 ## 3. Como rodar
@@ -43,7 +43,7 @@ uv run riscv-tools --config tools/riscv_build/config.fpga-sim.yaml \
 
 O `compile --emit mif` gera as imagens e os goldens em `build/real/`, e o `sim` com o perfil novo lê essas imagens, gera o `.mif` da BOOT_ROM e roda os 92 testes. A biblioteca `altera_mf` é analisada uma vez por execução dentro de `build/sim/sim_work/<perfil-de-simulacao>/libraries`. O nome do perfil combina o topo com uma impressão digital estável da configuração completa, evitando reutilizar artefatos incompatíveis entre perfis.
 
-O workflow `sim-fpga.yml` faz o mesmo no runner self-hosted, dentro da imagem `infra-toolchain`, com o Quartus montado somente para leitura. Só roda manualmente e pede a mesma confirmação (`FPGA_RUN_SECRET`) do `real.yml`. Enquanto as mudanças da UART ainda estiverem nas branches de feature, execute-o com `peripherals_ref=UART` e `toplevel_ref=UART`; depois dos merges, mantenha os valores padrão `main`.
+O workflow `sim-fpga.yml` faz o mesmo no runner self-hosted, dentro da imagem `ci-elf`, com o Quartus montado somente para leitura. Só roda manualmente e pede a mesma confirmação (`FPGA_RUN_SECRET`) do `real.yml`. Enquanto as mudanças da UART ainda estiverem nas branches de feature, execute-o com `peripherals_ref=UART` e `toplevel_ref=UART`; depois dos merges, mantenha os valores padrão `main`.
 
 ## 4. O que a verificação faz
 
