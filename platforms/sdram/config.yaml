@@ -83,6 +83,7 @@ sim:
     - ../Memory/sim/ram_simulation.vhd
     - ../Memory/sim/rom_simulation.vhd
     - ../Memory/external/sdram/sdram_pkg.vhd
+    - ../Common-Components/src/synchronizer.vhd
     - ../Memory/external/sdram/sdram_ctrl.vhd
     - ../Memory/external/sdram/sdram_cpu_bridge.vhd
     - ../Memory/external/sdram/sdram_arbiter.vhd

@@ -217,7 +217,7 @@ begin
 			o_rdata => p_rdata(32 * 5 + 31 downto 32 * 5),
 			i_tck => '0', i_tdi => '0', i_ir_in => "00",
 			i_state_cdr => '0', i_state_sdr => '0', i_state_udr => '0', i_state_uir => '0',
-			o_value => DISPLAY_VALUE, o_hex => DISPLAY_HEX
+			o_value => DISPLAY_VALUE, o_fail => open, o_hex => DISPLAY_HEX
 		);
 
 	-- the SDRAM and its chip model; the debug ports of the model stay unused here

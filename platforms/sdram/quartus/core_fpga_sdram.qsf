@@ -391,6 +391,7 @@ set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/cache/icache.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../../Common-Components/src/synchronizer.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_ctrl.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_cpu_bridge.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_arbiter.vhd

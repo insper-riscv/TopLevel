@@ -47,6 +47,20 @@ architecture behaviour of core_fpga_sdram is
 		);
 	end component;
 
+	-- Perfil do core desta placa; os mesmos valores vão para o generic map do core e para os LEDs.
+	-- Extensão M (multiplicação e divisão).
+	constant HAS_M        : boolean := true;
+	-- Extensão Zmmul (só multiplicação; o M já a inclui, então os dois não aparecem juntos).
+	constant HAS_ZMMUL    : boolean := false;
+	-- Extensão Zicsr (CSRs e traps do modo máquina).
+	constant HAS_ZICSR    : boolean := true;
+	-- Extensão Zifencei (fence.i).
+	constant HAS_ZIFENCEI : boolean := true;
+	-- Extensão Zicclsm (load e store desalinhados executados pelo hardware).
+	constant HAS_ZICCLSM  : boolean := true;
+	-- Extensão A (atômicas); o core ainda não a implementa.
+	constant HAS_A        : boolean := false;
+
 	signal if_addr : std_logic_vector(31 downto 0);
 	signal if_rden : std_logic;
 	signal boot_rom_data : std_logic_vector(31 downto 0);
@@ -86,9 +100,11 @@ architecture behaviour of core_fpga_sdram is
 	signal p_byteena : std_logic_vector(3 downto 0);
 	signal p_we, p_re : std_logic_vector(7 downto 0);
 	signal p_rdata   : std_logic_vector(8 * 32 - 1 downto 0) := (others => '0');
-	-- the display register: the segments of the six digits, and the value for the result LEDs
+	-- the display register: the segments of the six digits, and its value
 	signal display_hex   : std_logic_vector(41 downto 0);
 	signal display_value : std_logic_vector(23 downto 0);
+	-- Bandeira de falha que o hospedeiro grava no display.
+	signal display_fail  : std_logic;
 
 	signal pll_clk_mem    : std_logic;
 	signal pll_clk_dram   : std_logic;
@@ -150,7 +166,6 @@ architecture behaviour of core_fpga_sdram is
 	signal dq_out, dq_in : std_logic_vector(15 downto 0);
 	signal dq_oe     : std_logic;
 	signal dqm       : std_logic_vector(1 downto 0);
-	signal init_cpu  : std_logic_vector(1 downto 0) := "00";
 
 begin
 
@@ -167,21 +182,26 @@ begin
 
 	core_reset <= (not pll_locked) or (not FPGA_RESET_N);
 
-	-- status LEDs: heartbeat, PLL, reset button, core running, SDRAM initialized
-	LEDR(1) <= pll_locked;
-	LEDR(2) <= FPGA_RESET_N;
-	LEDR(3) <= not core_reset;
-	LEDR(4) <= init_cpu(1);
-
-	process (pll_clk_idexmem)
-	begin
-		if rising_edge(pll_clk_idexmem) then
-			init_cpu <= init_cpu(0) & init_done;
-		end if;
-	end process;
+	-- LEDR9 a LEDR4 mostram as extensões do perfil do core ('1' = presente); LEDR0 acende quando algum
+	-- programa da execução em curso falhou (o hospedeiro grava a bandeira); LEDR3 a LEDR1 ficam apagados,
+	-- pois os LEDs nativos da placa já indicam que o FPGA roda e que a SDRAM responde
+	LEDR(9) <= '1' when HAS_ZICCLSM else '0';
+	LEDR(8) <= '1' when HAS_ZIFENCEI else '0';
+	LEDR(7) <= '1' when HAS_ZICSR else '0';
+	LEDR(6) <= '1' when HAS_ZMMUL else '0';
+	LEDR(5) <= '1' when HAS_A else '0';
+	LEDR(4) <= '1' when HAS_M else '0';
+	LEDR(3 downto 1) <= (others => '0');
+	LEDR(0) <= display_fail;
 
 	CORE : entity work.core
-		generic map (has_m => true, has_zicsr => true, has_zifencei => true)
+		generic map (
+			has_m        => HAS_M,
+			has_zmmul    => HAS_ZMMUL,
+			has_zicsr    => HAS_ZICSR,
+			has_zifencei => HAS_ZIFENCEI,
+			has_zicclsm  => HAS_ZICCLSM
+		)
 		port map (
 			i_clk          => pll_clk_idexmem,
 			i_rst        => core_reset,
@@ -300,7 +320,7 @@ begin
 			i_clk => pll_clk_idexmem, i_rst => core_reset,
 			i_addr => p_addr, i_wdata => p_wdata, i_we => p_we(5), i_re => p_re(5),
 			o_rdata => p_rdata(32 * 5 + 31 downto 32 * 5),
-			o_hex => display_hex, o_value => display_value
+			o_hex => display_hex, o_value => display_value, o_fail => display_fail
 		);
 
 	HEX0 <= display_hex(6 downto 0);
@@ -309,9 +329,6 @@ begin
 	HEX3 <= display_hex(27 downto 21);
 	HEX4 <= display_hex(34 downto 28);
 	HEX5 <= display_hex(41 downto 35);
-
-	-- the five left LEDs repeat the result: lit when the state is "passed" (0001), dark otherwise
-	LEDR(9 downto 5) <= (others => '1') when display_value(15 downto 0) = x"0001" else (others => '0');
 
 	SDRAM_BRIDGE : entity work.sdram_cpu_bridge
 		port map (
@@ -375,14 +392,14 @@ begin
 		-- extra clock the simulation models for registered pins (found on the board, docs/SDRAM_BRINGUP.md)
 		generic map (capture_extra => 0, sync_req => false)
 		port map (
-			clk => pll_clk_mem, rst => rst_mem,
-			req_tog => req_tog, ack_tog => ack_tog, init_done => init_done,
-			we => c_we, addr => c_addr, wdata => c_wdata, be => c_be, rdata => c_rdata,
-			line => c_line, wdata_x => c_wdx, be_x => c_bex, rdata_x => c_rdx,
-			dram_cke => DRAM_CKE, dram_cs_n => DRAM_CS_N, dram_ras_n => DRAM_RAS_N,
-			dram_cas_n => DRAM_CAS_N, dram_we_n => DRAM_WE_N, dram_ba => DRAM_BA,
-			dram_addr => DRAM_ADDR, dram_dqm => dqm,
-			dram_dq_out => dq_out, dram_dq_oe => dq_oe, dram_dq_in => dq_in
+			i_clk => pll_clk_mem, i_rst => rst_mem,
+			i_req_tog => req_tog, o_ack_tog => ack_tog, o_init_done => init_done,
+			i_we => c_we, i_addr => c_addr, i_wdata => c_wdata, i_be => c_be, o_rdata => c_rdata,
+			i_line => c_line, i_wdata_x => c_wdx, i_be_x => c_bex, o_rdata_x => c_rdx,
+			o_dram_cke => DRAM_CKE, o_dram_cs_n => DRAM_CS_N, o_dram_ras_n => DRAM_RAS_N,
+			o_dram_cas_n => DRAM_CAS_N, o_dram_we_n => DRAM_WE_N, o_dram_ba => DRAM_BA,
+			o_dram_addr => DRAM_ADDR, o_dram_dqm => dqm,
+			o_dram_dq_out => dq_out, o_dram_dq_oe => dq_oe, i_dram_dq_in => dq_in
 		);
 
 	DRAM_CLK  <= pll_clk_dram;
@@ -396,10 +413,5 @@ begin
 		end if;
 	end process;
 
-	blink : entity work.Blinky
-	 port map (
-		clk => CLOCK_50,
-		led => LEDR(0)
-	 );
 
 end architecture;
