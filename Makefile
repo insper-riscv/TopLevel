@@ -5,9 +5,15 @@ WDIR  := build/ghdl
 P     := platforms/internal-mem
 
 # The simulation top (rv32i3stage_core_sim_test) with the core and the simulation
-# memories: Core and Memory are cloned next to this repository.
+# memories/peripherals: Core, Memory and Peripherals are cloned next to this repository.
+UART_VHDL := ../Peripherals/UART/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd \
+             ../Peripherals/UART/vendor/opencores_uart2bus/baudGen.vhd \
+             ../Peripherals/UART/vendor/opencores_uart2bus/uartRx.vhd \
+             ../Peripherals/UART/vendor/opencores_uart2bus/uartTx.vhd \
+             ../Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd \
+             ../Peripherals/UART/UART.vhd
 SIM_VHDL := $(shell find ../Core/common ../Core/I ../Core/M ../Core/cores ../Memory/sim -name '*.vhd' | sort) \
-            $(P)/rtl/clk_gen_3way.vhd $(P)/rtl/rv32i3stage_core_sim_test.vhd
+            $(UART_VHDL) $(P)/rtl/clk_gen_3way.vhd $(P)/rtl/rv32i3stage_core_sim_test.vhd
 
 .PHONY: check memory-map paths test all clean
 

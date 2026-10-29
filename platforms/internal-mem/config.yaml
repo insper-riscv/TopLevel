@@ -255,6 +255,12 @@ sim:
     - ../Core/common/reg_EX_MEM.vhd
     - ../Core/common/reg_MEM_WB.vhd
     - ../Core/cores/rv32im_pipeline_core.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/baudGen.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/uartRx.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/uartTx.vhd
+    - ../Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd
+    - ../Peripherals/UART/UART.vhd
     - ../TopLevel/platforms/internal-mem/rtl/rv32i3stage_core_sim_test.vhd
   # The cocotb testbench of the top lives in this repository; it is found
   # through python_path, which names it relative to the project that extends
@@ -262,6 +268,11 @@ sim:
   test_module: testbench.test_c_program
   python_path:
     - ../TopLevel/platforms/internal-mem
+  env:
+    # uart-errors exchanges a coordinated 32-byte RX/TX burst at 115200
+    # baud. Five milliseconds leave room for that serial traffic plus boot;
+    # short tests still return immediately when they write the mailbox.
+    SIM_TIMEOUT_CYCLES: "500000"
   ghdl_std: "08"
   # ROM_simulation reads its program image via a VHDL generic (a
   # file-open process inside the VHDL itself), not sim_runner's own
