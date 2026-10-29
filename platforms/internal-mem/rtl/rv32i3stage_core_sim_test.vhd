@@ -27,8 +27,10 @@ entity rv32i3stage_core_sim_test is
 	  ram_addr_width : natural := 9
   	);
 	port (
-    	CLK  : in  std_logic;
-		reset : in std_logic := '0'
+		CLK     : in  std_logic;
+		reset   : in  std_logic := '0';
+		UART_RX : in  std_logic := '1';
+		UART_TX : out std_logic := '1'
   	);
 end entity;
 
@@ -52,6 +54,7 @@ architecture behaviour of rv32i3stage_core_sim_test is
 	signal ram_addr : std_logic_vector(31 downto 0);
 	signal ram_wdata : std_logic_vector(31 downto 0);
 	signal ram_rdata : std_logic_vector(31 downto 0);
+	signal ram_memory_rdata : std_logic_vector(31 downto 0);
 	signal ram_en : std_logic;
 	signal ram_re_gated : std_logic;
 	signal ram_we_gated : std_logic;
@@ -64,11 +67,26 @@ architecture behaviour of rv32i3stage_core_sim_test is
 	signal pll_clk_wb     : std_logic;
 	signal pll_locked     : std_logic;
 
+	-- Mesma UART memory-mapped do topo de hardware, em 0xC0000000.
+	signal uart_selected : std_logic;
+	signal uart_write    : std_logic;
+	signal uart_read     : std_logic;
+	signal uart_rdata    : std_logic_vector(31 downto 0);
+	signal uart_read_d   : std_logic;
+	signal uart_rdata_d  : std_logic_vector(31 downto 0);
+
 begin
 
+	-- Separa a regiao da UART da RAM, exatamente como core_fpga_test.
+	uart_selected <= '1'
+		when ram_addr(31 downto 28) = x"C"
+		else '0';
+	uart_write <= ram_wren and ram_en and uart_selected;
+	uart_read  <= ram_rden and ram_en and uart_selected;
+
 	-- Sinais intermediarios para port maps (VHDL-93 nao aceita expressoes em port maps)
-	ram_re_gated <= ram_rden and ram_en;
-	ram_we_gated <= ram_wren and ram_en;
+	ram_re_gated <= ram_rden and ram_en and not uart_selected;
+	ram_we_gated <= ram_wren and ram_en and not uart_selected;
 
 	pll_inst : entity work.clk_gen_3way
     port map (
@@ -108,7 +126,49 @@ begin
 			ram_wren    => ram_wren,    -- write enable
 			ram_rden    => ram_rden,    -- read enable
 			ram_byteena => ram_byteena 	-- máscara de bytes
-	);
+		);
+
+	UART_PERIPHERAL : entity work.UART
+		generic map (
+			DATA_WIDTH => 32,
+			-- clk_gen_3way produz uma borda de pll_clk_idexmem a cada
+			-- 30 ns com o CLK de 10 ns usado pelo perfil de simulacao.
+			-- Mantem 115200 baud nesse clock de 33,333 MHz; o topo de
+			-- hardware usa o valor default para seu PLL de 50 MHz.
+			BAUD_FREQ  => 16#240#,
+			BAUD_LIMIT => 16#2671#
+		)
+		port map (
+			clock    => pll_clk_idexmem,
+			clear    => reset,
+			data_in  => ram_wdata,
+			address  => ram_addr(3 downto 2),
+			write    => uart_write,
+			read     => uart_read,
+			data_out => uart_rdata,
+			irq      => open,
+			uart_rx  => UART_RX,
+			uart_tx  => UART_TX
+		);
+
+	UART_READ_PIPELINE : process (reset, pll_clk_idexmem)
+	begin
+		if reset = '1' then
+			uart_read_d  <= '0';
+			uart_rdata_d <= (others => '0');
+		elsif rising_edge(pll_clk_idexmem) then
+			uart_read_d <= uart_read;
+
+			if uart_read = '1' then
+				uart_rdata_d <= uart_rdata;
+			end if;
+		end if;
+	end process;
+
+	-- O core recebe a resposta do acesso realizado no ciclo anterior.
+	ram_rdata <= uart_rdata_d
+		when uart_read_d = '1'
+		else ram_memory_rdata;
 
 	-- BOOT_ROM e FLASH: duas instancias separadas da MESMA entidade
 	-- ROM_simulation, cada uma com seu proprio arquivo/largura.
@@ -149,7 +209,7 @@ begin
 			reRAM 		=> ram_re_gated,
 			weRAM 		=> ram_we_gated,
 			eRAM 		=> ram_en,
-			data_out 	=> ram_rdata
+			data_out 	=> ram_memory_rdata
 	);
 
 end architecture;
