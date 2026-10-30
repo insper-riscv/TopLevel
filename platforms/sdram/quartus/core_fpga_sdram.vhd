@@ -58,8 +58,8 @@ architecture behaviour of core_fpga_sdram is
 	constant HAS_ZIFENCEI : boolean := true;
 	-- Extensão Zicclsm (load e store desalinhados executados pelo hardware).
 	constant HAS_ZICCLSM  : boolean := true;
-	-- Extensão A (atômicas); o core ainda não a implementa.
-	constant HAS_A        : boolean := false;
+	-- Extensão Zicntr (contadores cycle, time e instret); implica Zicsr, que o core liga junto.
+	constant HAS_ZICNTR   : boolean := true;
 
 	signal if_addr : std_logic_vector(31 downto 0);
 	signal if_rden : std_logic;
@@ -182,14 +182,14 @@ begin
 
 	core_reset <= (not pll_locked) or (not FPGA_RESET_N);
 
-	-- LEDR9 a LEDR4 mostram as extensões do perfil do core ('1' = presente); LEDR0 acende quando algum
+	-- LEDR9 a LEDR4 mostram as extensões do perfil do core ('1' = presente, e o Zicntr apaga o LEDR7, como o M apaga o LEDR6); LEDR0 acende quando algum
 	-- programa da execução em curso falhou (o hospedeiro grava a bandeira); LEDR3 a LEDR1 ficam apagados,
 	-- pois os LEDs nativos da placa já indicam que o FPGA roda e que a SDRAM responde
 	LEDR(9) <= '1' when HAS_ZICCLSM else '0';
 	LEDR(8) <= '1' when HAS_ZIFENCEI else '0';
-	LEDR(7) <= '1' when HAS_ZICSR else '0';
+	LEDR(7) <= '1' when HAS_ZICSR and not HAS_ZICNTR else '0';
 	LEDR(6) <= '1' when HAS_ZMMUL else '0';
-	LEDR(5) <= '1' when HAS_A else '0';
+	LEDR(5) <= '1' when HAS_ZICNTR else '0';
 	LEDR(4) <= '1' when HAS_M else '0';
 	LEDR(3 downto 1) <= (others => '0');
 	LEDR(0) <= display_fail;
@@ -198,7 +198,9 @@ begin
 		generic map (
 			has_m        => HAS_M,
 			has_zmmul    => HAS_ZMMUL,
-			has_zicsr    => HAS_ZICSR,
+			has_zicsr    => HAS_ZICSR or HAS_ZICNTR,
+			has_zicntr   => HAS_ZICNTR,
+			tick_cycles  => 50,
 			has_zifencei => HAS_ZIFENCEI,
 			has_zicclsm  => HAS_ZICCLSM
 		)

@@ -25,6 +25,8 @@ entity rv32im_sdram_axi_sim_test is
 	  ram_addr_width : natural := 9;
 	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
 	  HAS_ZICSR : boolean := false;
+	  -- Habilita os contadores da extensão Zicntr (implica Zicsr).
+	  HAS_ZICNTR : boolean := false;
 	  -- Zifencei no core (FENCE.I invalida a cache de instrucoes); false mantem o NOP.
 	  HAS_ZIFENCEI : boolean := false;
 	  -- Acesso desalinhado a memoria principal executado em hardware (Zicclsm).
@@ -149,7 +151,7 @@ begin
     );
 
 	CORE : entity work.core
-		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zifencei => HAS_ZIFENCEI, has_zicclsm => HAS_ZICCLSM, has_dcache => not WRITE_THROUGH)
+		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zicntr => HAS_ZICNTR, has_zifencei => HAS_ZIFENCEI, has_zicclsm => HAS_ZICCLSM, has_dcache => not WRITE_THROUGH)
 		port map (
 			o_trap       => core_trap,
 			o_retire     => core_retire,

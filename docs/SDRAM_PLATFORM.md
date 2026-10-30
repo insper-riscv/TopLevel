@@ -46,15 +46,16 @@ responde.
 | :--- | :--- | :--- |
 | LEDR9 | Zicclsm | load e store desalinhados executados pelo hardware |
 | LEDR8 | Zifencei | `fence.i` |
-| LEDR7 | Zicsr | CSRs e traps do modo máquina |
+| LEDR7 | Zicsr | CSRs e traps do modo máquina; apagado com Zicntr, que já a inclui |
 | LEDR6 | Zmmul | só multiplicação; apagado com M, que já a inclui |
-| LEDR5 | A | atômicas; o core não a implementa, então fica sempre apagado |
+| LEDR5 | Zicntr | contadores `cycle`, `time` e `instret`; implica Zicsr, então o perfil com Zicntr acende LEDR5 e apaga LEDR7 |
 | LEDR4 | M | multiplicação e divisão |
 | LEDR3 a LEDR1 | sem uso | nunca |
 | LEDR0 | Falha | pelo menos um programa da execução em curso falhou |
 
 Os níveis dos LEDR9 a LEDR4 vêm das constantes `HAS_*` do topo `core_fpga_sdram`, as mesmas que
-configuram o core, de modo que o LED e o hardware não divergem.
+configuram o core, de modo que o LED e o hardware não divergem. Zicntr e Zicsr seguem a mesma regra
+de nome do perfil que M e Zmmul: o LED da extensão que implica a outra apaga o dela.
 
 O LEDR0 mostra uma bandeira que o hospedeiro grava no registrador do display por uma instrução
 própria do Virtual JTAG (a instrução 2, um registrador de 2 bits: o bit 0 é o valor e o bit 1

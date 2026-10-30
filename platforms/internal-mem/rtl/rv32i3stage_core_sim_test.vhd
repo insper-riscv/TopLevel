@@ -28,6 +28,8 @@ entity rv32i3stage_core_sim_test is
 	  ram_addr_width : natural := 9;
 	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
 	  HAS_ZICSR : boolean := false;
+	  -- Habilita os contadores da extensão Zicntr (implica Zicsr).
+	  HAS_ZICNTR : boolean := false;
 	  -- Extensao M completa no core.
 	  HAS_M : boolean := true;
 	  -- Multiplicacao sem divisao (Zmmul) no core.
@@ -98,7 +100,7 @@ begin
     );
 
 	CORE : entity work.core
-		generic map (has_m => HAS_M, has_zmmul => HAS_ZMMUL, has_zicsr => HAS_ZICSR, has_zicclsm => HAS_ZICCLSM)
+		generic map (has_m => HAS_M, has_zmmul => HAS_ZMMUL, has_zicsr => HAS_ZICSR, has_zicntr => HAS_ZICNTR, has_zicclsm => HAS_ZICCLSM)
 		port map (
 			o_trap       => core_trap,
 			o_retire     => core_retire,

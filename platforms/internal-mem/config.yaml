@@ -303,6 +303,7 @@ sim:
     rom_addr_width: "13"
     ram_addr_width: "16"
     HAS_ZICSR: true
+    HAS_ZICNTR: true
 
 # Spike runs each test's own image, which starts at the crt0's _start.
 # On the hardware that image ends in rv32_wait_restart, a routine of the
