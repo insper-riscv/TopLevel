@@ -21,7 +21,7 @@ O PLL real (`platforms/internal-mem/pll/pll.vhd`) envolve uma IP `altera_pll` cu
 
 1. A biblioteca de simulação do Quartus: `altera_mf_components.vhd` e `altera_mf.vhd`, em `<Quartus>/eda/sim_lib/`. Ela vem com o Quartus, então este perfil roda onde o Quartus está instalado, e não em um runner hospedado do GitHub.
 2. A variável `QUARTUS_ROOTDIR` apontando para o diretório `quartus` da instalação (por exemplo `/opt/altera_lite/25.1std/quartus`).
-3. O GHDL, o GCC com picolibc e o Spike, como no sim padrão (a imagem `infra-toolchain` tem os três).
+3. O GHDL, o GCC com picolibc e o Spike, como no sim padrão (a imagem `ci-elf` tem os três).
 4. Os checkouts do Core, do Memory, do Peripherals e do TopLevel ao lado do projeto de testes (`../Core`, `../Memory`, `../Peripherals`, `../TopLevel`), como no `sim-fpga.yml`.
 
 ## 3. Como rodar
@@ -43,17 +43,17 @@ uv run riscv-tools --config tools/riscv_build/config.fpga-sim.yaml \
 
 O `compile --emit mif` gera as imagens e os goldens em `build/real/`, e o `sim` com o perfil novo lê essas imagens, gera o `.mif` da BOOT_ROM e roda os 92 testes. A biblioteca `altera_mf` é analisada uma vez por execução dentro de `build/sim/sim_work/<perfil-de-simulacao>/libraries`. O nome do perfil combina o topo com uma impressão digital estável da configuração completa, evitando reutilizar artefatos incompatíveis entre perfis.
 
-O workflow `sim-fpga.yml` faz o mesmo no runner self-hosted, dentro da imagem `infra-toolchain`, com o Quartus montado somente para leitura. Só roda manualmente e pede a mesma confirmação (`FPGA_RUN_SECRET`) do `real.yml`. Enquanto as mudanças da UART ainda estiverem nas branches de feature, execute-o com `peripherals_ref=UART` e `toplevel_ref=UART`; depois dos merges, mantenha os valores padrão `main`.
+O workflow `sim-fpga.yml` faz o mesmo no runner self-hosted, dentro da imagem `ci-elf`, com o Quartus montado somente para leitura. Só roda manualmente e pede a mesma confirmação (`FPGA_RUN_SECRET`) do `real.yml`. Enquanto as mudanças da UART ainda estiverem nas branches de feature, execute-o com `peripherals_ref=UART` e `toplevel_ref=UART`; depois dos merges, mantenha os valores padrão `main`.
 
 ## 4. O que a verificação faz
 
-O módulo de teste (`platforms/internal-mem/testbench/test_c_program.py`) é o mesmo dos dois perfis. Ele observa o barramento de escrita da RAM (`ram_wren`, `ram_en`, `ram_addr`, `ram_wdata`, `ram_byteena`), procura a escrita de PASS ou FAIL no mailbox e, em testes de memória, compara o conteúdo reconstruído da RAM com o golden. O perfil do topo de hardware só muda o que ele dirige, por variáveis de ambiente (`sim.env`): nome do clock e do reset, período, clock de amostragem (`pll_clk_idexmem`, o da RAM) e limite de ciclos.
+O módulo de teste (`platforms/internal-mem/testbench/test_c_program.py`) é o mesmo dos dois perfis. Ele observa o barramento de escrita da RAM (`ram_wren`, `ram_en`, `ram_addr`, `ram_wdata`, `ram_byteena`), procura a escrita no `tohost` (1 é PASS, `(código << 1) | 1` é FAIL) e, em testes de memória, compara o conteúdo reconstruído da RAM com o golden. O perfil do topo de hardware só muda o que ele dirige, por variáveis de ambiente (`sim.env`): nome do clock e do reset, período, clock de amostragem (`pll_clk_idexmem`, o da RAM) e limite de ciclos.
 
 ## 5. O que continua só no hardware
 
 | Item | Por quê |
 | :--- | :--- |
-| Escrita de FLASH por JTAG (In-System Memory Content Editor) e a go flag vinda do host | Só existem na placa; na simulação a imagem é carregada do arquivo |
+| Escrita de FLASH por JTAG (In-System Memory Content Editor) e o `fromhost` vindo do host | Só existem na placa; na simulação a imagem é carregada do arquivo |
 | Temporização e síntese | A simulação é funcional: não vê frequência máxima, violação de setup e hold nem otimização |
 | Estado inicial real da FPGA | A simulação inicializa a memória e os registradores de forma previsível |
 | Conteúdo da RAM lido de dentro da IP | O GHDL só expõe sinais, então o conteúdo é reconstruído do barramento, não lido da memória |

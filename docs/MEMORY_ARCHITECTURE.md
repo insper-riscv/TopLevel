@@ -35,7 +35,7 @@ Programado **uma única vez**, como parte do compile completo inicial do
 Quartus (`quartus_sh --flow compile` + `quartus_pgm`); nunca reescrito via
 JTAG depois disso, diferente de FLASH. Contém `boot_rom.S`
 (`platforms/internal-mem/runtime/boot_rom.S`): o vetor de reset, que limpa
-mailbox/go_flag/tohost/fromhost e o cabeçalho do `stdout` e salta pra
+tohost/fromhost e o cabeçalho do `stdout` e salta pra
 FLASH, e o loop de espera/restart (`rv32_wait_restart`) que deixa
 `riscv-tools run` trocar de teste sem reprogramar a FPGA inteira; ver
 [PROGRAM_UPDATE_HANDOFF.md](PROGRAM_UPDATE_HANDOFF.md) pro fluxo
@@ -64,8 +64,8 @@ MEM (load/store) sempre alcança para escrita; `.rodata` (constantes
 grandes) fica residente em FLASH, nunca copiado pra cá, ver "FLASH precisa
 de uma segunda porta de leitura" abaixo. Os últimos 1056 bytes do espaço
 físico da IP são reservados (fora do `__ram_size` que `rv32im-fpga.specs`
-dá ao teste) para: mailbox + go_flag (2 palavras), tohost/fromhost (4
-palavras, convenção HTIF usada só pelo Spike) e o buffer do `stdout`
+dá ao teste) para: tohost/fromhost (4
+palavras, convenção HTIF, com 2 palavras livres) e o buffer do `stdout`
 (1032 bytes, ver [RUNTIME.md](RUNTIME.md)).
 
 ## FLASH precisa de uma segunda porta de leitura: o limite do Quartus Lite
@@ -95,7 +95,7 @@ idênticas**, single-port cada uma:
   (`pll_clk_idexmem`), já que é o estágio MEM que consome as duas.
 
 O `INSTANCE_NAME` diferente é o que faz o JTAG In-System Memory Content
-Editor tratá-las como dois taps independentes. O `riscv_tools` (mailbox/
+Editor tratá-las como dois taps independentes. O `riscv_tools` (tohost/
 rom_writer) escreve o **mesmo conteúdo** nas duas toda vez que troca de
 teste; `config.yaml`: `quartus.rom_mem_instances: [1, 3]`, uma lista com
 os dois índices JTAG, não um só.
@@ -115,17 +115,14 @@ fixos).
 | RAM (espaço físico)    | `0x00008000` | 160K             | 40960  | 16      |
 | RAM (útil, `rv32im-fpga.specs`) | `0x00008000` | 160K − 24 − 1032 bytes | N/A | N/A |
 | `stdout` (cabeçalho e dados) | `0x0002FBE0` | 1032 bytes | N/A | N/A |
-| mailbox_addr           | `0x0002FFFC` | 1 palavra        | N/A      | N/A       |
-| go_flag_addr           | `0x0002FFF8` | 1 palavra        | N/A      | N/A       |
 | fromhost               | `0x0002FFF0` | 2 palavras       | N/A      | N/A       |
 | tohost                 | `0x0002FFE8` | 2 palavras       | N/A      | N/A       |
 | `__stack` (sp inicial) | `0x0002FBE0` | N/A                | N/A      | N/A       |
 
 FLASH ficou em **30K** (não 32K, que seria o número "redondo" óbvio) por um
 motivo específico: o topo de RAM (`ram_base + ram_words*4 = 0x30000`)
-precisa cair num endereço alinhado em 4096 bytes, porque toda escrita de
-mailbox em `Tests/asm/*/src.S` usa `lui xN, 0x30` (sem `addi` depois) pra
-montar esse endereço: `lui` só zera os 12 bits baixos, então só funciona se
+precisa cair num endereço alinhado em 4096 bytes, porque o boot ROM monta o
+fim da RAM com `lui t0, 0x30` (sem `addi` depois): `lui` só zera os 12 bits baixos, então só funciona se
 esses 12 bits já forem zero no valor real. `0x800 (FLASH_BASE) + FLASH_SIZE`
 só cai num múltiplo de 4096 se `FLASH_SIZE` for um múltiplo ímpar de 2048
 (30K = 30720 = 15×2048 serve; 32K = 32768 = 16×2048 não).
@@ -150,8 +147,8 @@ Memory Content Editor usa pra numerar as instâncias):
 0. `BOOT_ROM`: sem índice usável em `config.yaml` de propósito, nunca é
    reescrita em tempo real, só no compile inicial.
 1. `FLASH`: `quartus.rom_mem_instances[0]`.
-2. `RAM`: `quartus.ram_mem_instance` / `quartus.mailbox_mem_instance`
-   (o mailbox mora dentro da RAM, então compartilha o índice dela).
+2. `RAM`: `quartus.ram_mem_instance`
+   (`tohost` e `fromhost` moram dentro da RAM, então compartilham o índice dela).
 3. `FLASH_MEM`: `quartus.rom_mem_instances[1]`. Instanciada **depois** de
    RAM de propósito, pra não deslocar o índice 2 que RAM já tem.
 

@@ -1,7 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.rv32i_ctrl_consts.all;
 
 entity rv32i3stage_core_sim_test is
 	generic (
@@ -12,10 +11,12 @@ entity rv32i3stage_core_sim_test is
 	  -- callers (e.g. tests/python/tests.json) that don't set them.
 	  BOOT_ROM_FILE : string := "default.hex";
 	  ROM_FILE : string := "default.hex";
+	  -- Initial contents of the RAM, same format as ROM_FILE; empty: zero.
+	  RAM_FILE : string := "";
 	  -- Word-address width of ROM_simulation/RAM_simulation's internal
 	  -- memory array (depth = 2**width words) — all three default to
 	  -- 9 (512 words) inside ROM_simulation/RAM_simulation themselves,
-	  -- too small for a program/mailbox address sized for the real
+	  -- too small for a program/tohost address sized for the real
 	  -- BOOT_ROM/FLASH/RAM1PORT hardware. Exposed here so a
 	  -- full-pipeline testbench can size these to match whatever
 	  -- memory map its own tests were compiled against, without
@@ -24,7 +25,19 @@ entity rv32i3stage_core_sim_test is
 	  -- tests) are unaffected.
 	  boot_rom_addr_width : natural := 9;
 	  rom_addr_width : natural := 9;
-	  ram_addr_width : natural := 9
+	  ram_addr_width : natural := 9;
+	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
+	  HAS_ZICSR : boolean := false;
+	  -- Habilita os contadores da extensão Zicntr (implica Zicsr).
+	  HAS_ZICNTR : boolean := false;
+	  -- Contadores de eventos da extensao Zihpm (quatro, indices 3 a 6); exige Zicsr.
+	  HAS_ZIHPM : boolean := false;
+	  -- Extensao M completa no core.
+	  HAS_M : boolean := true;
+	  -- Multiplicacao sem divisao (Zmmul) no core.
+	  HAS_ZMMUL : boolean := false;
+	  -- Acesso desalinhado a memoria principal executado em hardware (Zicclsm).
+	  HAS_ZICCLSM : boolean := true
   	);
 	port (
 		CLK     : in  std_logic;
@@ -35,6 +48,24 @@ entity rv32i3stage_core_sim_test is
 end entity;
 
 architecture behaviour of rv32i3stage_core_sim_test is
+
+	-- Quantidade de contadores de eventos do Zihpm: quatro (indices 3 a 6) com a extensao, nenhum sem ela.
+	function hpm_count(present : boolean) return natural is
+	begin
+		if present then
+			return 4;
+		end if;
+		return 0;
+	end function;
+
+	-- Exceção sinalizada pelo core sem Zicsr (um ciclo em '1'); com Zicsr fica em '0'.
+	signal core_trap       : std_logic;
+	-- Pulso de retirada de uma instrução em EX, contado pelo testbench para medir os ciclos por instrução.
+	signal core_retire : std_logic;
+	-- Causa da exceção sinalizada, no formato do mcause.
+	signal core_trap_cause : std_logic_vector(31 downto 0);
+	-- PC da instrução que gerou a exceção sinalizada.
+	signal core_trap_pc    : std_logic_vector(31 downto 0);
 
 	-- IF stage: barramento UNICO compartilhado por BOOT_ROM e FLASH
 	-- (ver rv32im_pipeline_core.vhd is_boot_rom_if/is_boot_rom_d) --
@@ -75,18 +106,26 @@ architecture behaviour of rv32i3stage_core_sim_test is
 	signal uart_read_d   : std_logic;
 	signal uart_rdata_d  : std_logic_vector(31 downto 0);
 
+	-- Porta externa do core (enderecos com o bit 31 ou 30 em 1): aqui so' a UART responde.
+	signal sdram_addr     : std_logic_vector(31 downto 0);
+	signal sdram_wdata    : std_logic_vector(31 downto 0);
+	signal sdram_byteena  : std_logic_vector(3 downto 0);
+	signal sdram_rden     : std_logic;
+	signal sdram_wren     : std_logic;
+	signal sdram_rdata    : std_logic_vector(31 downto 0);
+
 begin
 
-	-- Separa a regiao da UART da RAM, exatamente como core_fpga_test.
+	-- A UART fica na janela de perifericos (0xC0000000), que o core atende pela porta externa.
 	uart_selected <= '1'
-		when ram_addr(31 downto 28) = x"C"
+		when sdram_addr(31 downto 28) = x"C"
 		else '0';
-	uart_write <= ram_wren and ram_en and uart_selected;
-	uart_read  <= ram_rden and ram_en and uart_selected;
+	uart_write <= sdram_wren and uart_selected;
+	uart_read  <= sdram_rden and uart_selected;
 
 	-- Sinais intermediarios para port maps (VHDL-93 nao aceita expressoes em port maps)
-	ram_re_gated <= ram_rden and ram_en and not uart_selected;
-	ram_we_gated <= ram_wren and ram_en and not uart_selected;
+	ram_re_gated <= ram_rden and ram_en;
+	ram_we_gated <= ram_wren and ram_en;
 
 	pll_inst : entity work.clk_gen_3way
     port map (
@@ -97,58 +136,71 @@ begin
       clk2 => pll_clk_wb
     );
 
-	CORE : entity work.rv32im_pipeline_core
+	CORE : entity work.core
+		generic map (has_m => HAS_M, has_zmmul => HAS_ZMMUL, has_zicsr => HAS_ZICSR, has_zicntr => HAS_ZICNTR, hpm_counters => hpm_count(HAS_ZIHPM), has_zicclsm => HAS_ZICCLSM)
 		port map (
-			clk          => pll_clk_idexmem,
-			reset 		=> reset,
+			o_trap       => core_trap,
+			o_retire     => core_retire,
+			o_trap_cause => core_trap_cause,
+			o_trap_pc    => core_trap_pc,
+
+			i_clk          => pll_clk_idexmem,
+			i_rst 		=> reset,
 
 			----------------------------------------------------------------------
 			-- Interface de busca de instrucao -- barramento unico
 			-- compartilhado por BOOT_ROM e FLASH (ver
 			-- rv32im_pipeline_core.vhd)
 			----------------------------------------------------------------------
-			if_addr       => if_addr,
-			if_rden       => if_rden,
-			boot_rom_data => boot_rom_data,
-			flash_data    => flash_data,
+			o_if_addr       => if_addr,
+			o_if_rden       => if_rden,
+			i_boot_rom_data => boot_rom_data,
+			i_flash_data    => flash_data,
 
-			flash_addr2 => flash_addr2,
-			flash_rden2 => flash_rden2,
-			flash_data2 => flash_data2,
+			o_flash_addr2 => flash_addr2,
+			o_flash_rden2 => flash_rden2,
+			i_flash_data2 => flash_data2,
 
 			----------------------------------------------------------------------
 			-- Interface com a RAM (leitura e escrita)
 			----------------------------------------------------------------------
-			ram_addr    => ram_addr, 	-- endereço de palavra
-			ram_wdata   => ram_wdata, 	-- dados a escrever (saida do store manager)
-			ram_rdata   => ram_rdata, 	-- dados lidos
-			ram_en      => ram_en, 		-- enable ram
-			ram_wren    => ram_wren,    -- write enable
-			ram_rden    => ram_rden,    -- read enable
-			ram_byteena => ram_byteena 	-- máscara de bytes
-		);
+			o_ram_addr    => ram_addr, 	-- endereço de palavra
+			o_ram_wdata   => ram_wdata, 	-- dados a escrever (saida do store manager)
+			i_ram_rdata   => ram_rdata, 	-- dados lidos
+			o_ram_en      => ram_en, 		-- enable ram
+			o_ram_wren    => ram_wren,    -- write enable
+			o_ram_rden    => ram_rden,    -- read enable
+			o_ram_byteena => ram_byteena, 	-- máscara de bytes
+
+			o_sdram_addr    => sdram_addr,
+			o_sdram_wdata   => sdram_wdata,
+			o_sdram_byteena => sdram_byteena,
+			o_sdram_rden    => sdram_rden,
+			o_sdram_wren    => sdram_wren,
+			i_sdram_rdata   => sdram_rdata
+	);
 
 	UART_PERIPHERAL : entity work.UART
 		generic map (
-			DATA_WIDTH => 32,
+			data_width => 32,
 			-- clk_gen_3way produz uma borda de pll_clk_idexmem a cada
 			-- 30 ns com o CLK de 10 ns usado pelo perfil de simulacao.
 			-- Mantem 115200 baud nesse clock de 33,333 MHz; o topo de
 			-- hardware usa o valor default para seu PLL de 50 MHz.
-			BAUD_FREQ  => 16#240#,
-			BAUD_LIMIT => 16#2671#
+			baud_freq  => 16#240#,
+			baud_limit => 16#2671#
 		)
 		port map (
-			clock    => pll_clk_idexmem,
-			clear    => reset,
-			data_in  => ram_wdata,
-			address  => ram_addr(3 downto 2),
-			write    => uart_write,
-			read     => uart_read,
-			data_out => uart_rdata,
-			irq      => open,
-			uart_rx  => UART_RX,
-			uart_tx  => UART_TX
+			i_clk      => pll_clk_idexmem,
+			i_rst      => reset,
+			i_data_in  => sdram_wdata,
+			i_address  => sdram_addr(3 downto 2),
+			i_write    => uart_write,
+			i_read     => uart_read,
+			o_data_out => uart_rdata,
+			o_irq      => open,
+			i_uart_rx  => UART_RX,
+			o_uart_tx  => UART_TX
 		);
 
 	UART_READ_PIPELINE : process (reset, pll_clk_idexmem)
@@ -166,9 +218,8 @@ begin
 	end process;
 
 	-- O core recebe a resposta do acesso realizado no ciclo anterior.
-	ram_rdata <= uart_rdata_d
-		when uart_read_d = '1'
-		else ram_memory_rdata;
+	sdram_rdata <= uart_rdata_d;
+	ram_rdata   <= ram_memory_rdata;
 
 	-- BOOT_ROM e FLASH: duas instancias separadas da MESMA entidade
 	-- ROM_simulation, cada uma com seu proprio arquivo/largura.
@@ -177,39 +228,39 @@ begin
 	-- estagio MEM (ver rv32im_pipeline_core.vhd flash_addr2 -- o
 	-- copy-loop de .data em boot_rom.S le FLASH como dado).
 	BOOT_ROM : entity work.ROM_simulation
-		generic map (ROM_FILE => BOOT_ROM_FILE, memoryAddrWidth => boot_rom_addr_width)
+		generic map (rom_file => BOOT_ROM_FILE, memory_addr_width => boot_rom_addr_width)
 		port map (
-			addr 	=> if_addr(31 downto 2),
-			clk 	=> pll_clk_if,
-			re 		=> if_rden,
-			data	=> boot_rom_data
+			i_addr 	=> if_addr(31 downto 2),
+			i_clk 	=> pll_clk_if,
+			i_re 		=> if_rden,
+			o_data	=> boot_rom_data
 	);
 
 	FLASH : entity work.ROM_simulation
-		generic map (ROM_FILE => ROM_FILE, memoryAddrWidth => rom_addr_width)
+		generic map (rom_file => ROM_FILE, memory_addr_width => rom_addr_width)
 		port map (
-			addr 	=> if_addr(31 downto 2),
-			clk 	=> pll_clk_if,
-			re 		=> if_rden,
-			data	=> flash_data,
+			i_addr 	=> if_addr(31 downto 2),
+			i_clk 	=> pll_clk_if,
+			i_re 		=> if_rden,
+			o_data	=> flash_data,
 
-			addr2 	=> flash_addr2(31 downto 2),
-			clk2 	=> pll_clk_idexmem,
-			re2 	=> flash_rden2,
-			data2	=> flash_data2
+			i_addr2 	=> flash_addr2(31 downto 2),
+			i_clk2 	=> pll_clk_idexmem,
+			i_re2 	=> flash_rden2,
+			o_data2	=> flash_data2
 	);
 
 	RAM : entity work.RAM_simulation
-		generic map (memoryAddrWidth => ram_addr_width)
+		generic map (memory_addr_width => ram_addr_width, ram_file => RAM_FILE)
 		port map(
-			addr 		=> ram_addr(31 downto 2), -- word addressable
-			mask 		=> ram_byteena,
-			clk		 	=> pll_clk_idexmem,
-			data_in 	=> ram_wdata,
-			reRAM 		=> ram_re_gated,
-			weRAM 		=> ram_we_gated,
-			eRAM 		=> ram_en,
-			data_out 	=> ram_memory_rdata
+			i_addr 		=> ram_addr(31 downto 2), -- word addressable
+			i_mask 		=> ram_byteena,
+			i_clk		 	=> pll_clk_idexmem,
+			i_data_in 	=> ram_wdata,
+			i_re_ram 		=> ram_re_gated,
+			i_we_ram 		=> ram_we_gated,
+			i_en_ram 		=> ram_en,
+			o_data_out 	=> ram_memory_rdata
 	);
 
 end architecture;
