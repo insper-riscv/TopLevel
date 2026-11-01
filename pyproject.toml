@@ -63,11 +63,6 @@ extend-select = [
     "D402",  # summary line must not repeat the signature
 ]
 
-ignore = [
-    "S603",
-    "S607",
-]
-
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
@@ -85,10 +80,6 @@ max-returns = 6
 max-branches = 12
 max-locals = 15
 max-public-methods = 10
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "PLR2004"]
-"tests/fixtures/**" = ["B011", "ARG001"]
 
 [tool.ruff.format]
 quote-style = "double"

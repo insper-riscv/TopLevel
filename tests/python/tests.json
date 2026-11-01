@@ -4,7 +4,7 @@
         "sources": [
             "platforms/internal-mem/rtl/clk_gen_3way.vhd"
         ],
-        "test_module": "tests.python.unittests.rtl.ClkGen3Way"
+        "test_module": "tests.python.unittests.rtl.clk_gen_3way"
     },
     "sdram_exec": {
         "toplevel": "rv32im_sdram_sim_test",
@@ -87,7 +87,7 @@
             "../Memory/external/bus/seg_display.vhd",
             "platforms/sdram/rtl/rv32im_sdram_sim_test.vhd"
         ],
-        "test_module": "tests.python.unittests.rtl.SdramExec",
+        "test_module": "tests.python.unittests.rtl.sdram_exec",
         "parameters": {
             "HAS_ZICSR": true,
             "HAS_ZIFENCEI": true,
@@ -186,7 +186,7 @@
             "platforms/internal-mem/rtl/clk_gen_3way.vhd",
             "platforms/sdram-axi/rtl/rv32im_sdram_axi_sim_test.vhd"
         ],
-        "test_module": "tests.python.unittests.rtl.SdramExec",
+        "test_module": "tests.python.unittests.rtl.sdram_exec",
         "parameters": {
             "HAS_ZICSR": true,
             "HAS_ZIFENCEI": true,
@@ -286,7 +286,7 @@
             "platforms/internal-mem/rtl/clk_gen_3way.vhd",
             "platforms/sdram-axi/rtl/rv32im_sdram_axi_sim_test.vhd"
         ],
-        "test_module": "tests.python.unittests.rtl.SdramExec",
+        "test_module": "tests.python.unittests.rtl.sdram_exec",
         "parameters": {
             "HAS_ZICSR": true,
             "HAS_ZIFENCEI": true,
@@ -383,7 +383,7 @@
             "../Memory/external/bus/seg_display.vhd",
             "platforms/sdram/rtl/rv32im_sdram_sim_test.vhd"
         ],
-        "test_module": "tests.python.unittests.rtl.SdramDisplay",
+        "test_module": "tests.python.unittests.rtl.sdram_display",
         "parameters": {
             "HAS_ZICSR": true,
             "HAS_ZIFENCEI": true,
