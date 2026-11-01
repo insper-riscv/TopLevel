@@ -91,6 +91,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/I/store_manager.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/I/misaligned_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/control_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/bubble_mux.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/forwarding_match.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/forwarding_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/hazard_detection_unit.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
