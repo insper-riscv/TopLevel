@@ -1,7 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.rv32i_ctrl_consts.all;
 
 entity rv32i3stage_core_sim_test is
 	generic (
@@ -12,6 +11,8 @@ entity rv32i3stage_core_sim_test is
 	  -- callers (e.g. tests/python/tests.json) that don't set them.
 	  BOOT_ROM_FILE : string := "default.hex";
 	  ROM_FILE : string := "default.hex";
+	  -- Initial contents of the RAM, same format as ROM_FILE; empty: zero.
+	  RAM_FILE : string := "";
 	  -- Word-address width of ROM_simulation/RAM_simulation's internal
 	  -- memory array (depth = 2**width words) — all three default to
 	  -- 9 (512 words) inside ROM_simulation/RAM_simulation themselves,
@@ -24,7 +25,9 @@ entity rv32i3stage_core_sim_test is
 	  -- tests) are unaffected.
 	  boot_rom_addr_width : natural := 9;
 	  rom_addr_width : natural := 9;
-	  ram_addr_width : natural := 9
+	  ram_addr_width : natural := 9;
+	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
+	  HAS_ZICSR : boolean := false
   	);
 	port (
     	CLK  : in  std_logic;
@@ -79,35 +82,36 @@ begin
       clk2 => pll_clk_wb
     );
 
-	CORE : entity work.rv32im_pipeline_core
+	CORE : entity work.cpu
+		generic map (has_m => true, has_zicsr => HAS_ZICSR)
 		port map (
-			clk          => pll_clk_idexmem,
-			reset 		=> reset,
+			i_clk          => pll_clk_idexmem,
+			i_rst 		=> reset,
 
 			----------------------------------------------------------------------
 			-- Interface de busca de instrucao -- barramento unico
 			-- compartilhado por BOOT_ROM e FLASH (ver
 			-- rv32im_pipeline_core.vhd)
 			----------------------------------------------------------------------
-			if_addr       => if_addr,
-			if_rden       => if_rden,
-			boot_rom_data => boot_rom_data,
-			flash_data    => flash_data,
+			o_if_addr       => if_addr,
+			o_if_rden       => if_rden,
+			i_boot_rom_data => boot_rom_data,
+			i_flash_data    => flash_data,
 
-			flash_addr2 => flash_addr2,
-			flash_rden2 => flash_rden2,
-			flash_data2 => flash_data2,
+			o_flash_addr2 => flash_addr2,
+			o_flash_rden2 => flash_rden2,
+			i_flash_data2 => flash_data2,
 
 			----------------------------------------------------------------------
 			-- Interface com a RAM (leitura e escrita)
 			----------------------------------------------------------------------
-			ram_addr    => ram_addr, 	-- endereço de palavra
-			ram_wdata   => ram_wdata, 	-- dados a escrever (saida do store manager)
-			ram_rdata   => ram_rdata, 	-- dados lidos
-			ram_en      => ram_en, 		-- enable ram
-			ram_wren    => ram_wren,    -- write enable
-			ram_rden    => ram_rden,    -- read enable
-			ram_byteena => ram_byteena 	-- máscara de bytes
+			o_ram_addr    => ram_addr, 	-- endereço de palavra
+			o_ram_wdata   => ram_wdata, 	-- dados a escrever (saida do store manager)
+			i_ram_rdata   => ram_rdata, 	-- dados lidos
+			o_ram_en      => ram_en, 		-- enable ram
+			o_ram_wren    => ram_wren,    -- write enable
+			o_ram_rden    => ram_rden,    -- read enable
+			o_ram_byteena => ram_byteena 	-- máscara de bytes
 	);
 
 	-- BOOT_ROM e FLASH: duas instancias separadas da MESMA entidade
@@ -140,7 +144,7 @@ begin
 	);
 
 	RAM : entity work.RAM_simulation
-		generic map (memoryAddrWidth => ram_addr_width)
+		generic map (memoryAddrWidth => ram_addr_width, RAM_FILE => RAM_FILE)
 		port map(
 			addr 		=> ram_addr(31 downto 2), -- word addressable
 			mask 		=> ram_byteena,

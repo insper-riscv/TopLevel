@@ -1,7 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.rv32i_ctrl_consts.all;
 
 -- Simulation top of the SDRAM platform: the core, the BOOT_ROM and FLASH of internal-mem (VHDL
 -- arrays) and the SDRAM (bridge, arbiter, controller and chip model of the Memory repository) on
@@ -13,7 +12,7 @@ use work.rv32i_ctrl_consts.all;
 -- the testbench compares the content of the memory with a golden.
 --
 -- The core's external port goes through the interconnect of the Memory repository: bit 31 = 0 is
--- the SDRAM, bit 31 = 1 a peripheral window, with the JTAG UART at 0xC0000000. UART_* stand for the
+-- the SDRAM, bit 31 = 1 a peripheral window, with the JTAG UART at 0xC0000000 and the display register at 0xD0000000. UART_* stand for the
 -- Virtual JTAG instance of the UART (see jtag_uart); the testbench drives them to read what the
 -- program prints.
 entity rv32im_sdram_sim_test is
@@ -22,7 +21,14 @@ entity rv32im_sdram_sim_test is
 	  ROM_FILE : string := "default.hex";
 	  boot_rom_addr_width : natural := 9;
 	  rom_addr_width : natural := 9;
-	  ram_addr_width : natural := 9
+	  ram_addr_width : natural := 9;
+	  -- Zicsr no core (instrucoes CSR reais); false mantem o comportamento de NOP.
+	  HAS_ZICSR : boolean := false;
+	  -- Zifencei no core (FENCE.I invalida a cache de instrucoes); false mantem o NOP.
+	  HAS_ZIFENCEI : boolean := false;
+	  -- Imagem de programa gravada na SDRAM no tempo zero (uma palavra de 32 bits por linha, em
+	  -- hexadecimal, a partir de 0x40000000): o hospedeiro que carrega o chip pela porta de debug.
+	  SDRAM_FILE : string := ""
   	);
 	port (
     	CLK     : in  std_logic;
@@ -37,7 +43,10 @@ entity rv32im_sdram_sim_test is
 		UART_STATE_CDR : in  std_logic := '0';
 		UART_STATE_SDR : in  std_logic := '0';
 		UART_STATE_UDR : in  std_logic := '0';
-		UART_STATE_UIR : in  std_logic := '0'
+		UART_STATE_UIR : in  std_logic := '0';
+		-- value and segments of the display register (peripheral 5, 0xD0000000), whose host port stays idle here
+		DISPLAY_VALUE  : out std_logic_vector(23 downto 0);
+		DISPLAY_HEX    : out std_logic_vector(41 downto 0)
   	);
 end entity;
 
@@ -91,6 +100,19 @@ architecture behaviour of rv32im_sdram_sim_test is
 	signal dbg_init_ok    : std_logic;
 	signal sdram_init     : std_logic;
 
+	-- Busca de instrucao em SDRAM: cache de instrucoes no clock do IF
+	signal ic_data   : std_logic_vector(31 downto 0);
+	signal ic_ready  : std_logic;
+	signal ic_sel    : std_logic;
+	signal ic_inval  : std_logic;
+	signal id_addr   : std_logic_vector(31 downto 0);
+	signal id_rden   : std_logic;
+	signal id_adv    : std_logic;
+	signal id_ready  : std_logic;
+	signal id_rdata  : std_logic_vector(31 downto 0);
+	signal id_line   : std_logic;
+	signal id_rdx    : std_logic_vector(95 downto 0);
+
 begin
 
 	pll_inst : entity work.clk_gen_3way
@@ -102,36 +124,51 @@ begin
       clk2 => pll_clk_wb
     );
 
-	CORE : entity work.rv32im_pipeline_core
+	CORE : entity work.cpu
+		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zifencei => HAS_ZIFENCEI)
 		port map (
-			clk          => pll_clk_idexmem,
-			reset 		=> reset,
+			i_clk          => pll_clk_idexmem,
+			i_rst 		=> reset,
 
-			if_addr       => if_addr,
-			if_rden       => if_rden,
-			boot_rom_data => boot_rom_data,
-			flash_data    => flash_data,
+			o_if_addr       => if_addr,
+			o_if_rden       => if_rden,
+			i_boot_rom_data => boot_rom_data,
+			i_flash_data    => flash_data,
 
-			flash_addr2 => flash_addr2,
-			flash_rden2 => flash_rden2,
-			flash_data2 => flash_data2,
+			o_flash_addr2 => flash_addr2,
+			o_flash_rden2 => flash_rden2,
+			i_flash_data2 => flash_data2,
 
-			ram_addr    => ram_addr,
-			ram_wdata   => ram_wdata,
-			ram_rdata   => ram_rdata,
-			ram_en      => ram_en,
-			ram_wren    => ram_wren,
-			ram_rden    => ram_rden,
-			ram_byteena => ram_byteena,
+			o_ram_addr    => ram_addr,
+			o_ram_wdata   => ram_wdata,
+			i_ram_rdata   => ram_rdata,
+			o_ram_en      => ram_en,
+			o_ram_wren    => ram_wren,
+			o_ram_rden    => ram_rden,
+			o_ram_byteena => ram_byteena,
 
-			sdram_addr    => sdram_addr,
-			sdram_wdata   => sdram_wdata,
-			sdram_byteena => sdram_byteena,
-			sdram_rden    => sdram_rden,
-			sdram_wren    => sdram_wren,
-			sdram_rdata   => sdram_rdata,
-			sdram_ready   => sdram_ready,
-			mem_advance   => mem_advance
+			o_sdram_addr    => sdram_addr,
+			o_sdram_wdata   => sdram_wdata,
+			o_sdram_byteena => sdram_byteena,
+			o_sdram_rden    => sdram_rden,
+			o_sdram_wren    => sdram_wren,
+			i_sdram_rdata   => sdram_rdata,
+			i_sdram_ready   => sdram_ready,
+			o_mem_advance   => mem_advance,
+
+			i_ic_data  => ic_data,
+			i_ic_ready => ic_ready,
+			o_ic_sel   => ic_sel,
+			o_ic_inval => ic_inval
+	);
+
+	ICACHE : entity work.icache
+		port map (
+			clk => pll_clk_if, rst => reset,
+			addr => if_addr, sel => ic_sel, ready => ic_ready, data => ic_data,
+			invalidate => ic_inval,
+			d_addr => id_addr, d_rden => id_rden, d_advance => id_adv, d_ready => id_ready,
+			d_rdata => id_rdata, d_line => id_line, d_rdata_x => id_rdx
 	);
 
 	INTERCONNECT : entity work.ext_interconnect
@@ -156,14 +193,27 @@ begin
 			state_udr => UART_STATE_UDR, state_uir => UART_STATE_UIR
 		);
 
+	DISPLAY : entity work.seg_display
+		port map (
+			i_clk => pll_clk_idexmem, i_rst => reset,
+			i_addr => p_addr, i_wdata => p_wdata, i_we => p_we(5), i_re => p_re(5),
+			o_rdata => p_rdata(32 * 5 + 31 downto 32 * 5),
+			i_tck => '0', i_tdi => '0', i_ir_in => "00",
+			i_state_cdr => '0', i_state_sdr => '0', i_state_udr => '0', i_state_uir => '0',
+			o_value => DISPLAY_VALUE, o_hex => DISPLAY_HEX
+		);
+
 	-- the SDRAM and its chip model; the debug ports of the model stay unused here
 	SDRAM : entity work.sdram_system
+		generic map (INIT_FILE => SDRAM_FILE)
 		port map (
 			clk_mem => CLK_MEM, clk_cpu => pll_clk_idexmem,
 			rst_mem => reset,   rst_cpu => reset,
 			addr => m_addr, wdata => m_wdata, byteena => m_byteena,
 			rden => m_rden, wren => m_wren, mem_advance => mem_advance,
 			ready => m_ready, rdata => m_rdata,
+			i_addr => id_addr, i_rden => id_rden, i_advance => id_adv, i_ready => id_ready,
+			i_rdata => id_rdata, i_line => id_line, i_rdata_x => id_rdx,
 			init_done => sdram_init,
 			dbg_word_addr => DBG_WORD_ADDR, dbg_word_data => DBG_WORD_DATA,
 			dbg_flip => '0', dbg_flip_addr => (others => '0'), dbg_flip_bit => (others => '0'),

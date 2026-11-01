@@ -10,7 +10,8 @@ from pathlib import Path
 # own sim_runner module for the same migration.
 from cocotb_tools.runner import get_runner
 
-def run_cocotb_test(toplevel: str, sources: list, test_module: str, parameters: dict = None):
+def run_cocotb_test(toplevel: str, sources: list, test_module: str, parameters: dict = None,
+                    build_args: list = None, test_args: list = None):
     tests_root = Path(__file__).resolve().parents[1]
     repo_root  = Path(__file__).resolve().parents[2] 
     sys.path.append(str(repo_root))
@@ -59,7 +60,8 @@ def run_cocotb_test(toplevel: str, sources: list, test_module: str, parameters: 
         hdl_toplevel=toplevel,
         always=True,
         build_dir=build_dir,
-        parameters=parameters or {}
+        parameters=parameters or {},
+        build_args=build_args or [],
     )
 
     wave_file = build_dir / "waves.ghw"
@@ -71,6 +73,7 @@ def run_cocotb_test(toplevel: str, sources: list, test_module: str, parameters: 
         test_module=test_module,
         build_dir=build_dir,
         plusargs=plusargs,
+        test_args=test_args or [],
     )
 
     print(f"Waves: {wave_file} (gerado)")

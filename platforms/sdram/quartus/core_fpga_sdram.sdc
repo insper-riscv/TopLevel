@@ -4,8 +4,9 @@ derive_pll_clocks
 derive_clock_uncertainty
 
 # DRAM_CLK is the PLL output that goes to the chip: its setup and hold are checked against it. The chip's
-# numbers are PROVISIONAL (a usual 143 MHz SDR part, not read from its datasheet yet): input setup 1.5 ns,
-# input hold 0.8 ns, access time after the clock 5.4 ns, output hold 2.5 ns.
+# numbers are those of the ISSI IS42/45S16320D datasheet, grade -7 at CAS latency 3: input setup 1.5 ns,
+# input hold 0.8 ns, access time after the clock 5.4 ns. The output hold is 2.5 ns, 0.2 ns more conservative
+# than the 2.7 ns of the datasheet.
 create_generated_clock -name DRAM_CLK_pin -source [get_pins {pll_inst|altera_pll_i|general[1].gpll~PLL_OUTPUT_COUNTER|divclk}] [get_ports DRAM_CLK]
 
 set dram_out [get_ports {DRAM_ADDR[*] DRAM_BA[*] DRAM_CAS_N DRAM_RAS_N DRAM_WE_N DRAM_CS_N DRAM_CKE DRAM_LDQM DRAM_UDQM DRAM_DQ[*]}]

@@ -19,6 +19,11 @@ coroutine scans its 48-bit register back to back (instruction 1) and collects th
 what it collected must be what the program wrote to the stdout buffer in the SDRAM: the buffer
 holds at most 1024 bytes, so the UART stream must start with all of them, and be equal when the
 buffer did not overflow.
+
+A program that reads the UART (the monitor) has a script of its own: when c-sdram/<test>/uart_input.txt
+exists, the console sends its bytes to the program, one every few scans, and at PASS everything the
+console read must be equal to c-sdram/<test>/uart_expected.txt. Both paths can be set by
+UART_INPUT_PATH and UART_EXPECTED_PATH.
 """
 
 import os
@@ -77,6 +82,26 @@ async def model_bytes(dut, golden: dict[int, int]) -> dict[int, int]:
 
 
 HALF_TCK_NS = 40
+# the console sends a byte every few scans: the program reads and echoes one in about that time, and a
+# byte that finds the 64-place receive queue full is lost (the answer to the scan says so)
+SCANS_PER_INPUT_BYTE = 12
+
+
+def script_path(variable: str, name: str) -> Path | None:
+    """The input or expected-output file of the running program, or None when it has none.
+
+    The file sits in the program's own directory, next to src.c: the project root is three
+    levels above the program's image (<root>/<build dir>/<kind>/<test>.hex).
+    """
+    given = os.environ.get(variable, "")
+    if given:
+        return Path(given) if Path(given).is_file() else None
+    image = os.environ.get("ROM_HEX", "")
+    if not image:
+        return None
+    root = Path(image).resolve().parents[2]
+    found = sorted(root.glob(f"*/{os.environ.get('TEST_NAME', '?')}/{name}"))
+    return found[0] if found else None
 
 
 async def uart_tck(dut, **states) -> None:
@@ -111,8 +136,15 @@ async def uart_console(dut, received: list[int], stop: list[bool]) -> None:
     """Scans until told to stop, always finishing a scan: the bytes of an interrupted scan are lost."""
     dut.UART_IR_IN.value = 1
     await uart_tck(dut, uir=True)
+    source = script_path("UART_INPUT_PATH", "uart_input.txt")
+    pending = list(source.read_bytes()) if source else []
+    scans = 0
     while not stop[0]:
-        received.extend(await uart_scan(dut))
+        push = None
+        if pending and scans % SCANS_PER_INPUT_BYTE == 0:
+            push = pending.pop(0)
+        received.extend(await uart_scan(dut, push))
+        scans += 1
 
 
 async def check_uart_stream(dut, received: list[int]) -> None:
@@ -126,6 +158,11 @@ async def check_uart_stream(dut, received: list[int]) -> None:
     data = bytearray()
     for word in range((kept + 3) // 4):
         data += (await read_model_word(dut, first_word + 2 + word)).to_bytes(4, "little")
+    script = script_path("UART_EXPECTED_PATH", "uart_expected.txt")
+    if script:
+        assert bytes(received) == script.read_bytes(), (
+            f"UART stream {bytes(received)!r} differs from {script.name} {script.read_bytes()!r}"
+        )
     expected = list(data[:kept])
     got = received[:kept]
     assert got == expected, f"UART stream {bytes(got)!r} differs from the stdout buffer {bytes(expected)!r}"
@@ -204,6 +241,9 @@ async def test_program(dut) -> None:
         if wdata == MAILBOX_FAIL:
             raise AssertionError("test signalled FAIL via RV32_FAIL()")
 
+    console_stop[0] = True
+    await console
+    dut._log.info(f"the console read {bytes(uart_bytes)!r}")
     raise AssertionError(
         f"timed out after {TIMEOUT_CYCLES} cycles without a PASS/FAIL signal"
     )
