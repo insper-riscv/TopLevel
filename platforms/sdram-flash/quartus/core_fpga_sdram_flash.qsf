@@ -70,6 +70,11 @@ set_global_assignment -name VHDL_FILE ../../../../Core/common/ext_ram_consts.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/wb_sel_consts.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/pc_src_consts.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/common/mem_map_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/fwd_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/common/word_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/muldiv_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_value_consts.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/trap_consts.vhd
 set_global_assignment -name VHDL_FILE ../../../../Common-Components/src/generic_register.vhd
 set_global_assignment -name VHDL_FILE ../../../../Common-Components/src/adder.vhd
 set_global_assignment -name VHDL_FILE ../../../../Common-Components/src/mux_2x1.vhd
