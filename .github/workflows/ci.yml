@@ -127,14 +127,18 @@ jobs:
     name: python-static-analysis
     runs-on: ubuntu-26.04
     timeout-minutes: 15
-    # The tools come pinned in the image, with the settings of [tool.ruff] and [tool.complexipy] of pyproject.toml.
+    # The tools that need no project environment come pinned in the image (pylint, pyright, deptry and uv audit run with `uv run` in the environment `uv sync` builds).
     container:
       image: ghcr.io/insper-riscv/ci-vhdl:latest
 
     steps:
       - uses: actions/checkout@v7
 
+      - name: Install the project
+        run: uv sync --locked
+
       - name: ruff lint
+        if: ${{ !cancelled() }}
         run: ruff check .
 
       - name: ruff format
@@ -149,10 +153,34 @@ jobs:
         if: ${{ !cancelled() }}
         run: pydocstyle --convention=pep257 --match-dir='^(?!(Common-Components|build|\.venv|sim_build|__pycache__)).*' .
 
+      - name: pylint
+        if: ${{ !cancelled() }}
+        run: uv run pylint .
+
+      - name: pyright
+        if: ${{ !cancelled() }}
+        run: uv run pyright
+
+      - name: pyrefly
+        if: ${{ !cancelled() }}
+        run: pyrefly check
+
+      - name: deptry
+        if: ${{ !cancelled() }}
+        run: uv run deptry .
+
       - name: complexipy
         if: ${{ !cancelled() }}
         run: complexipy .
 
+      - name: codeclone
+        if: ${{ !cancelled() }}
+        run: codeclone . --fail-on-new
+
       - name: semgrep
         if: ${{ !cancelled() }}
         run: semgrep scan --config p/python --error .
+
+      - name: uv audit
+        if: ${{ !cancelled() }}
+        run: uv audit
