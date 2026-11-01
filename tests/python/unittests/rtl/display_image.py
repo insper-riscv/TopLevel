@@ -14,8 +14,10 @@ from tests.python.unittests.rtl.sdram_exec_image import (
     DATA_BASE,
     FINISHED,
     SDRAM_BASE,
+    Item,
     addi,
     assemble,
+    hex_text,
     lui,
     lw,
     sw,
@@ -26,9 +28,9 @@ FINAL = 0x123456
 PAUSE = 40
 
 
-def build():
+def build() -> list[int]:
     """Build the words of the program."""
-    listing = [
+    listing: list[Item] = [
         lui(5, DISPLAY >> 12),  # x5 = the display register
         lui(9, DATA_BASE >> 12),  # x9 = data base
         addi(6, 0, 0),
@@ -55,13 +57,11 @@ def build():
     return words
 
 
-def write(directory):
+def write(directory: str | Path) -> None:
     """Write the hex image of the program into the directory."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / "sdram_display.hex").write_text(
-        "".join(f"{w & 0xFFFFFFFF:08x}\n" for w in build())
-    )
+    (directory / "sdram_display.hex").write_text(hex_text(build()))
 
 
 if __name__ == "__main__":

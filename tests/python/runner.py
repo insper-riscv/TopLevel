@@ -6,13 +6,15 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 # cocotb 2.0 split the Python test-runner API out of the main cocotb
 # package into cocotb-tools, imported as cocotb_tools.runner. This
 # repo's requirements.txt pulls unpinned cocotb, which now resolves to
 # 2.x, so the old `cocotb.runner` import 404s. See insper-riscv/Tools'
 # own sim_runner module for the same migration.
-from cocotb_tools.runner import get_results, get_runner
+from cocotb_tools.check_results import get_results
+from cocotb_tools.runner import get_runner
 
 TESTS_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -54,12 +56,12 @@ def _resolve_parameter(value: object) -> str:
     return str(value)
 
 
-def run_cocotb_test(config: dict) -> None:
+def run_cocotb_test(config: dict[str, Any]) -> None:
     """Build and run one cocotb test described by a tests.json entry.
 
     Parameters
     ----------
-    config : dict
+    config : dict of {str: Any}
         Entry with ``toplevel``, ``sources`` and ``test_module`` and,
         optionally, ``parameters``, ``build_args`` and ``test_args``.
 
@@ -74,9 +76,9 @@ def run_cocotb_test(config: dict) -> None:
 
     runner = get_runner(os.getenv("SIM", "ghdl"))
     build_dir = _build_dir(toplevel, test_module)
+    raw_parameters: dict[str, object] = config.get("parameters") or {}
     parameters = {
-        key: _resolve_parameter(value)
-        for key, value in (config.get("parameters") or {}).items()
+        key: _resolve_parameter(value) for key, value in raw_parameters.items()
     }
 
     runner.build(
@@ -107,12 +109,12 @@ def run_cocotb_test(config: dict) -> None:
         raise RuntimeError(message)
 
 
-def _run_entry(config: dict) -> None:
+def _run_entry(config: dict[str, Any]) -> None:
     """Run a tests.json entry without its skip bookkeeping keys."""
     run_cocotb_test({k: v for k, v in config.items() if k not in SKIP_KEYS})
 
 
-def _load_configs() -> dict:
+def _load_configs() -> dict[str, dict[str, Any]]:
     """Read tests.json, exiting with a message when it is unusable."""
     json_path = TESTS_ROOT / "python/tests.json"
     try:
@@ -125,7 +127,7 @@ def _load_configs() -> dict:
     sys.exit(1)
 
 
-def _run_all(configs: dict) -> None:
+def _run_all(configs: dict[str, dict[str, Any]]) -> None:
     """Run every non-skipped test and exit 1 when any of them fails.
 
     A ``skip``/``skip_reason`` entry is a config-level opt-out (not a
@@ -133,7 +135,7 @@ def _run_all(configs: dict) -> None:
     only skipped in this sweep; running it by name still attempts it.
     """
     print("Executando TODOS os testes definidos em tests.json...")
-    failures = []
+    failures: list[str] = []
     for name, config in configs.items():
         title = name.upper()
         if config.get("skip"):
@@ -163,7 +165,7 @@ def _run_all(configs: dict) -> None:
         sys.exit(1)
 
 
-def _run_named(name: str, config: dict) -> None:
+def _run_named(name: str, config: dict[str, Any]) -> None:
     """Run one test chosen by name, even when it is marked as skip."""
     print(f"Executando teste específico: {name}")
     if config.get("skip"):

@@ -18,3 +18,4 @@ platforms/*/quartus/*.qws
 platforms/*/quartus/*.jdi
 platforms/*/quartus/*.done
 platforms/*/quartus/*.smsg
+.cache/

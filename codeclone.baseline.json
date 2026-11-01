@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "generator": {
+      "name": "codeclone",
+      "version": "2.0.3"
+    },
+    "schema_version": "2.1",
+    "fingerprint_version": "1",
+    "python_tag": "cp314",
+    "created_at": "2026-11-01T22:42:36Z",
+    "payload_sha256": "3ec316e7b375c237b76bc0abcb9934b74d6e8e3a690763477071cffe31b76b7d",
+    "metrics_payload_sha256": "783fd2311d17c273c8746432bcdec8d9aded52e422d58cddeccd0db87245dcb2"
+  },
+  "clones": {
+    "functions": [],
+    "blocks": [
+      "67a3c08aaeb95fd665055d20575b6ef35a2dc89a|d212c948f28f7f1d26c93a7ab5de0e3fdc350ca7|d212c948f28f7f1d26c93a7ab5de0e3fdc350ca7|d54260a92e28db326006ab3e206dae342273c1cb",
+      "d212c948f28f7f1d26c93a7ab5de0e3fdc350ca7|d212c948f28f7f1d26c93a7ab5de0e3fdc350ca7|d54260a92e28db326006ab3e206dae342273c1cb|d212c948f28f7f1d26c93a7ab5de0e3fdc350ca7"
+    ]
+  },
+  "metrics": {
+    "max_complexity": 10,
+    "high_risk_functions": [],
+    "max_coupling": 1,
+    "high_coupling_classes": [],
+    "max_cohesion": 1,
+    "low_cohesion_classes": [],
+    "dependency_cycles": [],
+    "dependency_max_depth": 3,
+    "dead_code_items": [],
+    "health_score": 87,
+    "health_grade": "B",
+    "typing_param_permille": 1000,
+    "typing_return_permille": 1000,
+    "docstring_permille": 1000,
+    "typing_any_count": 45
+  }
+}

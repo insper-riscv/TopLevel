@@ -7,13 +7,15 @@ port and the segments of the six digits, and reads the read-back from
 the chip model.
 """
 
+from typing import Any
+
 import cocotb
-from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotb.triggers import ClockCycles
 
 from tests.python.unittests.rtl import display_image as image
 from tests.python.unittests.rtl import sdram_exec_image as base
 from tests.python.utils.checks import check
+from tests.python.utils.sdram import read_word, start_platform
 
 PATTERNS = [
     0b1000000,
@@ -33,45 +35,34 @@ PATTERNS = [
     0b0000110,
     0b0001110,
 ]
+POLL_CYCLES = 20
+MAX_POLLS = 3000
 
 
-def expected_hex(value):
+def expected_hex(value: int) -> int:
     """Return the six 7-segment digits that display the value."""
     return sum(PATTERNS[(value >> (4 * n)) & 0xF] << (7 * n) for n in range(6))
 
 
-async def read_word(dut, address):
-    """Read one word of the SDRAM chip model through the debug port."""
-    dut.DBG_WORD_ADDR.value = (address - base.SDRAM_BASE) // 4
-    for _ in range(3):
-        await RisingEdge(dut.CLK_MEM)
-    await Timer(1, unit="ns")
-    return int(dut.DBG_WORD_DATA.value)
-
-
 @cocotb.test()
-async def test_image_matches_the_generator(_dut):
+async def test_image_matches_the_generator(_dut: Any) -> None:
     """Check that the hex file is the one the generator produces."""
     data = base.Path(image.__file__).parent / "data"
-    expected = "".join(f"{w & 0xFFFFFFFF:08x}\n" for w in image.build())
     check(
-        (data / "sdram_display.hex").read_text() == expected,
+        (data / "sdram_display.hex").read_text()
+        == base.hex_text(image.build()),
         "sdram_display.hex differs from the generator",
     )
 
 
 @cocotb.test()
-async def test_the_program_drives_the_display(dut):
+async def test_the_program_drives_the_display(dut: Any) -> None:
     """Follow the display register until the program finishes."""
-    cocotb.start_soon(Clock(dut.CLK, 10, unit="ns").start())
-    cocotb.start_soon(Clock(dut.CLK_MEM, 7, unit="ns").start())
-    dut.reset.value = 1
-    await ClockCycles(dut.CLK, 5)
-    dut.reset.value = 0
+    await start_platform(dut)
 
-    seen = []
-    for _ in range(3000):
-        await ClockCycles(dut.CLK, 20)
+    seen: list[int] = []
+    for _ in range(MAX_POLLS):
+        await ClockCycles(dut.CLK, POLL_CYCLES)
         value = int(dut.DISPLAY_VALUE.value)
         if not seen or seen[-1] != value:
             seen.append(value)
