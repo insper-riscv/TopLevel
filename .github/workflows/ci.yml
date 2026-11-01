@@ -22,16 +22,17 @@ jobs:
         with:
           submodules: true
 
-      - name: Checkout Core, Memory and Peripherals (the platform wires them)
+      - name: Checkout Core, Memory, Peripherals and Common-Components (the platform wires them)
         # paths.yaml, platform.yaml and the Makefile name these repositories as
         # siblings of this checkout.
         run: |
-          rm -rf ../Core ../Memory ../Peripherals
+          rm -rf ../Core ../Memory ../Peripherals ../Common-Components
           git clone --depth 1 https://github.com/insper-riscv/Core.git ../Core
           git clone --depth 1 https://github.com/insper-riscv/Memory.git ../Memory
           git clone --depth 1 https://github.com/insper-riscv/Peripherals.git ../Peripherals
+          git clone --depth 1 https://github.com/insper-riscv/Common-Components.git ../Common-Components
 
-      - name: Install Python dependencies (riscv-tools from tools/Tools, + its sim extra)
+      - name: Install Python dependencies (cocotb; riscv-tools comes from the image)
         run: uv sync
 
       - name: Every referenced path exists
