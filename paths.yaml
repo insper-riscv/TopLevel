@@ -17,4 +17,5 @@ references:
   - {name: Quartus project dir, file: platforms/internal-mem/config.yaml, yaml: quartus.project_dir, base: .}
   - {name: board project (core_fpga_test.qsf), file: platforms/internal-mem/quartus/core_fpga_test.qsf, pattern: '-name (?:VHDL_FILE|VERILOG_FILE|QIP_FILE|SDC_FILE) (\S+)'}
   - {name: Quartus IPs of the PLL, paths: [platforms/internal-mem/pll/pll.qip, platforms/internal-mem/pll/pll_0002.qip]}
+  - {name: SDRAM bring-up project (sdram_bringup.qsf), file: platforms/sdram-bringup/quartus/sdram_bringup.qsf, pattern: '-name (?:VHDL_FILE|VERILOG_FILE|QIP_FILE|SDC_FILE) (\S+)'}
   - {name: per-entity tests.json, file: tests/python/tests.json, yaml: "*.sources", base: .}
