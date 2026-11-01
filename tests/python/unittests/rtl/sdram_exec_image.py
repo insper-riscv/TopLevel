@@ -8,22 +8,28 @@ and the program into the SDRAM chip model at time zero, the way the
 host loads the chip through the debug port before the core is released.
 """
 
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
+
+# A word of the listing, or a tuple that names a label, an origin or an
+# instruction that refers to a label.
+type Item = int | tuple[Any, ...]
 
 SDRAM_BASE = 0x40000000
 DATA_BASE = SDRAM_BASE + 0x1000
 IMM12 = 2048
 
 
-def _r(op, rd, f3, rs1, rs2):
+def _r(op: int, rd: int, f3: int, rs1: int, rs2: int) -> int:
     return (rs2 << 20) | (rs1 << 15) | (f3 << 12) | (rd << 7) | op
 
 
-def _i(op, rd, f3, rs1, imm):
+def _i(op: int, rd: int, f3: int, rs1: int, imm: int) -> int:
     return ((imm & 0xFFF) << 20) | (rs1 << 15) | (f3 << 12) | (rd << 7) | op
 
 
-def _s(f3, rs1, rs2, imm):
+def _s(f3: int, rs1: int, rs2: int, imm: int) -> int:
     return (
         (((imm >> 5) & 0x7F) << 25)
         | (rs2 << 20)
@@ -34,7 +40,7 @@ def _s(f3, rs1, rs2, imm):
     )
 
 
-def _b(f3, rs1, rs2, imm):
+def _b(f3: int, rs1: int, rs2: int, imm: int) -> int:
     return (
         (((imm >> 12) & 1) << 31)
         | (((imm >> 5) & 0x3F) << 25)
@@ -47,7 +53,7 @@ def _b(f3, rs1, rs2, imm):
     )
 
 
-def _j(rd, imm):
+def _j(rd: int, imm: int) -> int:
     return (
         (((imm >> 20) & 1) << 31)
         | (((imm >> 1) & 0x3FF) << 21)
@@ -58,22 +64,22 @@ def _j(rd, imm):
     )
 
 
-def lui(rd, imm20):
+def lui(rd: int, imm20: int) -> int:
     """Encode LUI."""
     return (imm20 << 12) | (rd << 7) | 0x37
 
 
-def addi(rd, rs1, imm):
+def addi(rd: int, rs1: int, imm: int) -> int:
     """Encode ADDI."""
     return _i(0x13, rd, 0, rs1, imm)
 
 
-def add(rd, rs1, rs2):
+def add(rd: int, rs1: int, rs2: int) -> int:
     """Encode ADD."""
     return _r(0x33, rd, 0, rs1, rs2)
 
 
-def sw(rs2, rs1, imm):
+def sw(rs2: int, rs1: int, imm: int) -> int:
     """Encode SW."""
     if not -IMM12 <= imm < IMM12:
         message = f"store offset {imm} does not fit"
@@ -81,42 +87,42 @@ def sw(rs2, rs1, imm):
     return _s(2, rs1, rs2, imm)
 
 
-def slli(rd, rs1, shamt):
+def slli(rd: int, rs1: int, shamt: int) -> int:
     """Encode SLLI."""
     return _i(0x13, rd, 1, rs1, shamt)
 
 
-def beq(rs1, rs2, imm):
+def beq(rs1: int, rs2: int, imm: int) -> int:
     """Encode BEQ."""
     return _b(0, rs1, rs2, imm)
 
 
-def bne(rs1, rs2, imm):
+def bne(rs1: int, rs2: int, imm: int) -> int:
     """Encode BNE."""
     return _b(1, rs1, rs2, imm)
 
 
-def fence_i(rd=0, rs1=0, imm=0):
+def fence_i(rd: int = 0, rs1: int = 0, imm: int = 0) -> int:
     """Encode FENCE.I."""
     return ((imm & 0xFFF) << 20) | (rs1 << 15) | (1 << 12) | (rd << 7) | 0x0F
 
 
-def lw(rd, rs1, imm):
+def lw(rd: int, rs1: int, imm: int) -> int:
     """Encode LW."""
     return _i(0x03, rd, 2, rs1, imm)
 
 
-def jalr(rd, rs1, imm):
+def jalr(rd: int, rs1: int, imm: int) -> int:
     """Encode JALR."""
     return _i(0x67, rd, 0, rs1, imm)
 
 
-def csrrw(rd, csr, rs1):
+def csrrw(rd: int, csr: int, rs1: int) -> int:
     """Encode CSRRW."""
     return (csr << 20) | (rs1 << 15) | (1 << 12) | (rd << 7) | 0x73
 
 
-def csrrs(rd, csr, rs1):
+def csrrs(rd: int, csr: int, rs1: int) -> int:
     """Encode CSRRS."""
     return (csr << 20) | (rs1 << 15) | (2 << 12) | (rd << 7) | 0x73
 
@@ -128,14 +134,16 @@ FENCE_I = 0x0000100F
 NOP = addi(0, 0, 0)
 
 
-def _layout(listing, base):
+def _layout(listing: Sequence[Item], base: int) -> dict[str, int]:
     """Return the address of every label of the listing."""
-    labels, pc = {}, base
+    labels: dict[str, int] = {}
+    pc = base
     for item in listing:
-        kind = item[0] if isinstance(item, tuple) else None
-        if kind == "label":
+        if not isinstance(item, tuple):
+            pc += 4
+        elif item[0] == "label":
             labels[item[1]] = pc
-        elif kind == "org":
+        elif item[0] == "org":
             if item[1] < pc:
                 message = f"org {item[1]:#x} is behind {pc:#x}"
                 raise ValueError(message)
@@ -145,7 +153,7 @@ def _layout(listing, base):
     return labels
 
 
-def _resolve(item, labels, pc):
+def _resolve(item: tuple[Any, ...], labels: dict[str, int], pc: int) -> int:
     """Encode an instruction that refers to a label, placed at pc."""
     kind = item[0]
     if kind == "jal":
@@ -158,12 +166,14 @@ def _resolve(item, labels, pc):
     raise ValueError(message)
 
 
-def assemble(listing, base):
+def assemble(
+    listing: Sequence[Item], base: int
+) -> tuple[list[int], dict[str, int]]:
     """Assemble a listing in two passes.
 
     Parameters
     ----------
-    listing : list
+    listing : sequence of (int or tuple)
         Words, ("label", name), ("org", address), ("jal", rd, name),
         ("br", funct3, rs1, rs2, name) or ("swl", rs2, name, extra),
         where the last three refer to a label and swl stores rs2 at
@@ -173,31 +183,32 @@ def assemble(listing, base):
 
     Returns
     -------
-    tuple
+    tuple of (list of int, dict of {str: int})
         The words and the address of every label.
     """
     labels = _layout(listing, base)
-    words, pc = [], base
+    words: list[int] = []
+    pc = base
     for item in listing:
-        kind = item[0] if isinstance(item, tuple) else None
-        if kind == "label":
-            continue
-        if kind == "org":
+        if not isinstance(item, tuple):
+            words.append(item)
+            pc += 4
+        elif item[0] == "org":
             words += [NOP] * ((item[1] - pc) // 4)
             pc = item[1]
-            continue
-        words.append(_resolve(item, labels, pc) if kind else item)
-        pc += 4
+        elif item[0] != "label":
+            words.append(_resolve(item, labels, pc))
+            pc += 4
     return words, labels
 
 
 FINISHED = DATA_BASE + 0x40
 
 
-def build():
+def build() -> tuple[list[int], list[int], dict[int, int], dict[str, int]]:
     """Build the boot ROM, the program and its expected results."""
     patched = addi(9, 0, 2)  # the instruction that replaces `addi x9, x0, 1`
-    listing = [
+    listing: list[Item] = [
         lui(1, SDRAM_BASE >> 12),  # x1 = code base
         lui(7, DATA_BASE >> 12),  # x7 = data base
         addi(2, 0, 20),
@@ -337,12 +348,12 @@ def build():
         jalr(0, 5, 0),
     ]
     words, labels = assemble(listing, SDRAM_BASE)
-    boot = [
+    boot: list[int] = [
         NOP,
         lui(1, SDRAM_BASE >> 12),
         jalr(0, 1, 0),
     ]  # the first word after reset is not executed
-    expected = {
+    expected: dict[int, int] = {
         DATA_BASE: 210,
         DATA_BASE + 4: 77,
         DATA_BASE + 8: 1,
@@ -362,17 +373,18 @@ def build():
     return boot, words, expected, labels
 
 
-def write(directory):
+def hex_text(words: Sequence[int]) -> str:
+    """Return the contents of a hex file, one 32-bit word per line."""
+    return "".join(f"{w & 0xFFFFFFFF:08x}\n" for w in words)
+
+
+def write(directory: str | Path) -> None:
     """Write the hex images of the boot ROM and of the program."""
     boot, words, _, _ = build()
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / "sdram_exec_boot.hex").write_text(
-        "".join(f"{w & 0xFFFFFFFF:08x}\n" for w in boot)
-    )
-    (directory / "sdram_exec.hex").write_text(
-        "".join(f"{w & 0xFFFFFFFF:08x}\n" for w in words)
-    )
+    (directory / "sdram_exec_boot.hex").write_text(hex_text(boot))
+    (directory / "sdram_exec.hex").write_text(hex_text(words))
 
 
 if __name__ == "__main__":

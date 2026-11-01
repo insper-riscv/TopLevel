@@ -42,11 +42,14 @@ the simulation top's CLK/reset. The bus watched is the same signals
 either way, they have the same names in both tops.
 """
 
+import logging
 import os
 from pathlib import Path
+from typing import Any
 
 import cocotb
 from cocotb.clock import Clock
+from cocotb.task import Task
 from cocotb.triggers import (
     ClockCycles,
     FallingEdge,
@@ -56,6 +59,8 @@ from cocotb.triggers import (
 )
 from riscv_tools.htif import word_offset
 from riscv_tools.mem_validator import compare_bytes, load_golden
+
+LOG = logging.getLogger("cocotb.testbench")
 
 # Must stay in sync with config.yaml's memory.tohost_addr and
 # boot_rom.S's own hardcoded tohost clear (the tohost write itself still
@@ -128,7 +133,7 @@ def check(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
-async def receive_uart_byte(uart_tx) -> int:
+async def receive_uart_byte(uart_tx: Any) -> int:
     """Receive one 8N1 byte from the UART TX line."""
     # Detecta o início do quadro 8N1.
     await FallingEdge(uart_tx)
@@ -152,7 +157,7 @@ async def receive_uart_byte(uart_tx) -> int:
 
 
 async def receive_uart_message(
-    uart_tx,
+    uart_tx: Any,
     byte_count: int = len(UART_TX_EXPECTED),
 ) -> bytes:
     """Receive a message of byte_count bytes from the UART TX line."""
@@ -164,7 +169,7 @@ async def receive_uart_message(
     return bytes(received)
 
 
-async def send_uart_byte(uart_rx, value: int) -> None:
+async def send_uart_byte(uart_rx: Any, value: int) -> None:
     """Send one 8N1 byte to the UART RX line."""
     # Start bit.
     uart_rx.value = 0
@@ -180,7 +185,7 @@ async def send_uart_byte(uart_rx, value: int) -> None:
     await Timer(UART_BIT_TIME_NS, unit="ns")
 
 
-async def send_uart_message(uart_rx, message: bytes) -> None:
+async def send_uart_message(uart_rx: Any, message: bytes) -> None:
     """Send a message to the UART RX line, byte by byte."""
     # Mantém a linha ociosa antes do primeiro start bit.
     uart_rx.value = 1
@@ -190,7 +195,7 @@ async def send_uart_message(uart_rx, message: bytes) -> None:
         await send_uart_byte(uart_rx, value)
 
 
-async def exchange_uart_errors(uart_rx, uart_tx) -> bytes:
+async def exchange_uart_errors(uart_rx: Any, uart_tx: Any) -> bytes:
     """Run the coordinated protocol of uart_hardware_test.py."""
     received = bytearray()
 
@@ -215,7 +220,7 @@ async def exchange_uart_errors(uart_rx, uart_tx) -> bytes:
     return bytes(received)
 
 
-def retired_now(dut) -> int:
+def retired_now(dut: Any) -> int:
     """1 when an instruction retires on this clock edge, 0 otherwise.
 
     The top exposes the retirement pulse of the core (valid in EX,
@@ -227,12 +232,14 @@ def retired_now(dut) -> int:
         return 0
 
 
-def start_uart(dut, test_name):
+def start_uart(
+    dut: Any, test_name: str
+) -> tuple[bytes | None, Task[bytes] | None]:
     """Start the UART capture that the named test needs.
 
     Returns
     -------
-    tuple
+    tuple of (bytes or None, Task or None)
         The expected bytes and the capture task, both None when the
         test does not use the UART.
     """
@@ -270,7 +277,7 @@ class RamBus:
     tohost/results writes a test happens to make.
     """
 
-    def __init__(self, dut) -> None:
+    def __init__(self, dut: Any) -> None:
         """Watch the RAM bus of the given top-level."""
         self.dut = dut
         self.ram_bytes: dict[int, int] = {}
@@ -322,20 +329,23 @@ class RamBus:
         return None
 
 
-async def finish_pass(dut, test_name, bus, uart, counters) -> None:
+async def finish_pass(
+    test_name: str,
+    bus: RamBus,
+    uart: tuple[bytes | None, Task[bytes] | None, Task[None] | None],
+    counters: tuple[int, int],
+) -> None:
     """Check the UART and the RAM content after a tohost PASS.
 
     Parameters
     ----------
-    dut : object
-        Top-level of the simulation.
     test_name : str
         Name of the running test.
     bus : RamBus
         RAM content reconstructed from the bus.
-    uart : tuple
+    uart : tuple of (bytes or None, Task or None, Task or None)
         Expected bytes, capture task and drive task of the UART.
-    counters : tuple
+    counters : tuple of (int, int)
         Clock cycles and instructions retired until the PASS.
     """
     expected, capture, drive = uart
@@ -347,11 +357,11 @@ async def finish_pass(dut, test_name, bus, uart, counters) -> None:
             received == expected,
             f"UART TX incorreto: esperado {expected!r}, recebido {received!r}",
         )
-        dut._log.info(f"UART TX recebido: {received!r}")
+        LOG.info("UART TX recebido: %r", received)
     cycles_used, retired = counters
-    dut._log.info("PASS")
-    dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
-    dut._log.info(f"CORE CYCLES {cycles_used} INSTRUCTIONS RETIRED {retired}")
+    LOG.info("PASS")
+    LOG.info("CLOCK CYCLES TAKEN %d", cycles_used)
+    LOG.info("CORE CYCLES %d INSTRUCTIONS RETIRED %d", cycles_used, retired)
     if GOLDEN_PATH is None:
         return
     matches = compare_bytes(
@@ -368,13 +378,12 @@ async def finish_pass(dut, test_name, bus, uart, counters) -> None:
 
 
 @cocotb.test()
-async def test_program(dut) -> None:
+async def test_program(dut: Any) -> None:
     """Run the program until it writes its result to tohost."""
     test_name = os.environ.get("TEST_NAME", "?")
-    dut._log.info(f"running {test_name}")
+    LOG.info("running %s", test_name)
 
     clock = getattr(dut, SIM_CLOCK)
-    reset = getattr(dut, SIM_RESET)
     sample_clock = getattr(dut, SIM_SAMPLE_CLOCK)
     cocotb.start_soon(Clock(clock, SIM_CLOCK_PERIOD_NS, unit="ns").start())
     for extra_name, extra_period in EXTRA_CLOCKS:
@@ -382,14 +391,14 @@ async def test_program(dut) -> None:
             Clock(getattr(dut, extra_name), extra_period, unit="ns").start()
         )
     uart_expected, uart_capture = start_uart(dut, test_name)
-    uart_drive = None
+    uart_drive: Task[None] | None = None
     bus = RamBus(dut)
     cycles_used = 0
     retired = 0
 
-    reset.value = SIM_RESET_ACTIVE
+    getattr(dut, SIM_RESET).value = SIM_RESET_ACTIVE
     await ClockCycles(clock, 5)
-    reset.value = 1 - SIM_RESET_ACTIVE
+    getattr(dut, SIM_RESET).value = 1 - SIM_RESET_ACTIVE
     if test_name == "uart-echo":
         uart_drive = cocotb.start_soon(
             send_uart_message(dut.UART_RX, UART_ECHO_EXPECTED)
@@ -403,9 +412,11 @@ async def test_program(dut) -> None:
         if tohost is None:
             continue
         if tohost == TOHOST_PASS:
-            uart = (uart_expected, uart_capture, uart_drive)
             await finish_pass(
-                dut, test_name, bus, uart, (cycles_used, retired)
+                test_name,
+                bus,
+                (uart_expected, uart_capture, uart_drive),
+                (cycles_used, retired),
             )
             return
         message = f"test signalled FAIL via RV32_FAIL(), code {tohost >> 1}"

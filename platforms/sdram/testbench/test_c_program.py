@@ -31,13 +31,18 @@ read must be equal to c-sdram/<test>/uart_expected.txt. Both paths can
 be set by UART_INPUT_PATH and UART_EXPECTED_PATH.
 """
 
+import logging
 import os
 from pathlib import Path
+from typing import Any
 
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from riscv_tools.mem_validator import compare_bytes, load_golden
+
+LOG = logging.getLogger("cocotb.testbench")
+TEST_NAME = os.environ.get("TEST_NAME", "?")
 
 
 def check(condition: bool, message: str) -> None:
@@ -77,7 +82,7 @@ EXTRA_CLOCKS = [
 ]
 
 
-def retired_now(dut) -> int:
+def retired_now(dut: Any) -> int:
     """1 when an instruction retires on this clock edge, 0 otherwise.
 
     The top exposes the retirement pulse of the core (valid in EX,
@@ -89,7 +94,7 @@ def retired_now(dut) -> int:
         return 0
 
 
-async def read_model_word(dut, word_address: int) -> int:
+async def read_model_word(dut: Any, word_address: int) -> int:
     """Read the 32-bit word at a word address of the chip model."""
     dut.DBG_WORD_ADDR.value = word_address
     mem_clock = getattr(dut, EXTRA_CLOCKS[0][0])
@@ -99,7 +104,7 @@ async def read_model_word(dut, word_address: int) -> int:
     return int(dut.DBG_WORD_DATA.value)
 
 
-async def model_bytes(dut, golden: dict[int, int]) -> dict[int, int]:
+async def model_bytes(dut: Any, golden: dict[int, int]) -> dict[int, int]:
     """Read the chip model at the golden's addresses.
 
     Returns
@@ -143,7 +148,7 @@ def script_path(variable: str, name: str) -> Path | None:
     return found[0] if found else None
 
 
-async def uart_tck(dut, **states) -> None:
+async def uart_tck(dut: Any, **states: bool) -> None:
     """Clock the UART's Virtual JTAG with the given flags high."""
     for name in ("cdr", "sdr", "udr", "uir"):
         getattr(dut, f"UART_STATE_{name.upper()}").value = (
@@ -158,7 +163,7 @@ async def uart_tck(dut, **states) -> None:
         getattr(dut, f"UART_STATE_{name.upper()}").value = 0
 
 
-async def uart_scan(dut, push: int | None = None) -> list[int]:
+async def uart_scan(dut: Any, push: int | None = None) -> list[int]:
     """Scan the UART register, sending a command.
 
     Returns the bytes the core sent.
@@ -176,7 +181,9 @@ async def uart_scan(dut, push: int | None = None) -> list[int]:
     return [(out >> (8 * i)) & 0xFF for i in range(count)]
 
 
-async def uart_console(dut, received: list[int], stop: list[bool]) -> None:
+async def uart_console(
+    dut: Any, received: list[int], stop: list[bool]
+) -> None:
     """Scan until told to stop, always finishing a scan.
 
     The bytes of an interrupted scan are lost.
@@ -184,7 +191,7 @@ async def uart_console(dut, received: list[int], stop: list[bool]) -> None:
     dut.UART_IR_IN.value = 1
     await uart_tck(dut, uir=True)
     source = script_path("UART_INPUT_PATH", "uart_input.txt")
-    pending = list(source.read_bytes()) if source else []
+    pending: list[int] = list(source.read_bytes()) if source else []
     scans = 0
     while not stop[0]:
         push = None
@@ -194,7 +201,7 @@ async def uart_console(dut, received: list[int], stop: list[bool]) -> None:
         scans += 1
 
 
-async def check_uart_stream(dut, received: list[int]) -> None:
+async def check_uart_stream(dut: Any, received: list[int]) -> None:
     """Check that the console read what the program put in stdout."""
     for _ in range(12):  # the answers reach the console two scans late
         received.extend(await uart_scan(dut))
@@ -231,18 +238,17 @@ async def check_uart_stream(dut, received: list[int]) -> None:
 class Run:
     """State of a simulated program: UART console and counters."""
 
-    def __init__(self, dut, clock) -> None:
+    def __init__(self, dut: Any, clock: Any) -> None:
         """Start the tick counter and the UART console of the program.
 
         Parameters
         ----------
-        dut : object
+        dut : Any
             Top-level of the simulation.
-        clock : object
+        clock : Any
             Base clock, whose rising edges are the ticks of the run.
         """
         self.dut = dut
-        self.test_name = os.environ.get("TEST_NAME", "?")
         self.ticks = 0
         self.core_cycles = 0
         self.retired = 0
@@ -253,7 +259,7 @@ class Run:
             uart_console(dut, self.uart_bytes, self.console_stop)
         )
 
-    async def _count_ticks(self, clock) -> None:
+    async def _count_ticks(self, clock: Any) -> None:
         """Count the ticks of the base clock, three per core cycle."""
         while True:
             await RisingEdge(clock)
@@ -263,16 +269,17 @@ class Run:
         """Stop the UART console and log what it read."""
         self.console_stop[0] = True
         await self.console
-        self.dut._log.info(f"the console read {bytes(self.uart_bytes)!r}")
+        LOG.info("the console read %r", bytes(self.uart_bytes))
 
     async def finish_pass(self, cycles_used: int) -> None:
         """Log the result and check the UART stream and the golden."""
         dut = self.dut
-        dut._log.info("PASS")
-        dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
-        dut._log.info(
-            f"CORE CYCLES {self.core_cycles} "
-            f"INSTRUCTIONS RETIRED {self.retired}"
+        LOG.info("PASS")
+        LOG.info("CLOCK CYCLES TAKEN %d", cycles_used)
+        LOG.info(
+            "CORE CYCLES %d INSTRUCTIONS RETIRED %d",
+            self.core_cycles,
+            self.retired,
         )
         await self.stop_console()
         await check_uart_stream(dut, self.uart_bytes)
@@ -283,18 +290,18 @@ class Run:
         matches = compare_bytes(
             actual,
             golden,
-            actual_label=self.test_name,
+            actual_label=TEST_NAME,
             golden_label=GOLDEN_PATH.name,
         )
         if not matches:
             message = (
-                f"{self.test_name}: tohost PASS but the SDRAM content "
+                f"{TEST_NAME}: tohost PASS but the SDRAM content "
                 f"doesn't match {GOLDEN_PATH.name}: see the diff above"
             )
             raise AssertionError(message)
 
 
-def tohost_write(dut) -> int | None:
+def tohost_write(dut: Any) -> int | None:
     """Return the data of a tohost write that completes on this edge.
 
     Returns
@@ -322,7 +329,7 @@ def tohost_write(dut) -> int | None:
     return None
 
 
-def start_clocks(dut):
+def start_clocks(dut: Any) -> Any:
     """Start the base and the extra clocks and return the base clock."""
     clock = getattr(dut, SIM_CLOCK)
     cocotb.start_soon(Clock(clock, SIM_CLOCK_PERIOD_NS, unit="ns").start())
@@ -334,10 +341,9 @@ def start_clocks(dut):
 
 
 @cocotb.test()
-async def test_program(dut) -> None:
+async def test_program(dut: Any) -> None:
     """Run the program until it writes its result to tohost."""
-    test_name = os.environ.get("TEST_NAME", "?")
-    dut._log.info(f"running {test_name}")
+    LOG.info("running %s", TEST_NAME)
 
     clock = start_clocks(dut)
     reset = getattr(dut, SIM_RESET)

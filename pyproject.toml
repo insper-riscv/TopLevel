@@ -14,6 +14,14 @@ dependencies = [
 [tool.uv]
 package = false
 
+# Run with `uv run` by the python-static-analysis job of the CI, in the environment of this project.
+[dependency-groups]
+dev = [
+    "pyright[nodejs]>=1.1",
+    "deptry>=0.20",
+    "pylint>=4.1.3",
+]
+
 # Static analysis of the Python (runner and tests), as run by the python-static-analysis job of the CI.
 [tool.ruff]
 target-version = "py314"
@@ -89,3 +97,39 @@ docstring-code-line-length = 72
 [tool.complexipy]
 paths = ["platforms", "tests"]
 max-complexity-allowed = 10
+
+[tool.deptry.per_rule_ignores]
+# riscv-tools comes from the ci-vhdl image, not from the dependencies above.
+DEP001 = ["riscv_tools"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportMissingModuleSource = "none"
+include = ["platforms", "tests"]
+# Where the ci-vhdl image installs riscv-tools.
+extraPaths = ["/opt/riscv-tools/riscv-tools/lib/python3.14/site-packages"]
+
+[tool.pyrefly]
+preset = "strict"
+project-includes = ["platforms", "tests"]
+search-path = ["/opt/riscv-tools/riscv-tools/lib/python3.14/site-packages"]
+python-version = "3.14"
+
+[tool.pylint.main]
+ignore = [".venv", "build", "sim_build", "Common-Components"]
+fail-under = 10
+# riscv-tools is installed by the ci-vhdl image, outside the project environment.
+init-hook = "import sys; sys.path.append('/opt/riscv-tools/riscv-tools/lib/python3.14/site-packages')"
+
+[tool.pylint.similarities]
+# The testbenches of two platforms read the same SIM_* variables. Each one is loaded alone, from its
+# own folder, so they cannot import the lines they share.
+min-similarity-lines = 7
+
+[tool.pylint.messages_control]
+disable = [
+    "too-few-public-methods", # small classes that hold the state of a test
+]

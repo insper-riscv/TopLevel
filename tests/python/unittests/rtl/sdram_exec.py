@@ -8,57 +8,42 @@ lines away, and rewrites one of its own instructions and runs FENCE.I
 before it runs the new one. The results are read from the chip model.
 """
 
+from typing import Any
+
 import cocotb
-from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotb.triggers import ClockCycles
 
 from tests.python.unittests.rtl import sdram_exec_image as image
 from tests.python.utils.checks import check
+from tests.python.utils.sdram import read_word, start_platform
 
 TIMEOUT_CYCLES = 600000
-
-
-async def read_word(dut, address):
-    """Read one word of the SDRAM chip model through the debug port."""
-    dut.DBG_WORD_ADDR.value = (address - image.SDRAM_BASE) // 4
-    for _ in range(3):
-        await RisingEdge(dut.CLK_MEM)
-    await Timer(1, unit="ns")
-    return int(dut.DBG_WORD_DATA.value)
-
-
-def _hex_of(words):
-    """Return the contents of a hex file for the given words."""
-    return "".join(f"{w & 0xFFFFFFFF:08x}\n" for w in words)
+POLL_CYCLES = 200
 
 
 @cocotb.test()
-async def test_images_match_the_generator(_dut):
+async def test_images_match_the_generator(_dut: Any) -> None:
     """Check that the simulated hex files are the generator's output."""
     boot, words, _, _ = image.build()
     data = image.Path(image.__file__).parent / "data"
     check(
-        (data / "sdram_exec_boot.hex").read_text() == _hex_of(boot),
+        (data / "sdram_exec_boot.hex").read_text() == image.hex_text(boot),
         "sdram_exec_boot.hex differs from the generator",
     )
     check(
-        (data / "sdram_exec.hex").read_text() == _hex_of(words),
+        (data / "sdram_exec.hex").read_text() == image.hex_text(words),
         "sdram_exec.hex differs from the generator",
     )
 
 
 @cocotb.test()
-async def test_program_runs_from_the_sdram(dut):
+async def test_program_runs_from_the_sdram(dut: Any) -> None:
     """Run the program and compare with the expected results."""
     _, _, expected, _ = image.build()
-    cocotb.start_soon(Clock(dut.CLK, 10, unit="ns").start())
-    cocotb.start_soon(Clock(dut.CLK_MEM, 7, unit="ns").start())
-    dut.reset.value = 1
-    await ClockCycles(dut.CLK, 5)
-    dut.reset.value = 0
+    await start_platform(dut)
 
-    for _ in range(TIMEOUT_CYCLES // 200):
-        await ClockCycles(dut.CLK, 200)
+    for _ in range(TIMEOUT_CYCLES // POLL_CYCLES):
+        await ClockCycles(dut.CLK, POLL_CYCLES)
         if await read_word(dut, image.FINISHED) == 1:
             break
     else:

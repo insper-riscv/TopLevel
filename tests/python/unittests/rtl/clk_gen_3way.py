@@ -1,31 +1,35 @@
 """Testes cocotb do gerador de clock de três vias (ClkGen3Way)."""
 
+import logging
+from typing import Any
+
 import cocotb
 from cocotb.triggers import Timer
 
 from tests.python.utils.checks import check
 
+LOG = logging.getLogger("cocotb.clk_gen_3way")
 ZEROS = (0, 0, 0)
 
 
-def outputs(dut) -> tuple:
+def outputs(dut: Any) -> tuple[int, int, int]:
     """Return the three clock outputs as a tuple of ints."""
     return (int(dut.clk0.value), int(dut.clk1.value), int(dut.clk2.value))
 
 
-async def rise(dut, half=5):
+async def rise(dut: Any, half: int = 5) -> None:
     """Drive clk_in high and wait half a period."""
     dut.clk_in.value = 1
-    await Timer(half, units="ns")
+    await Timer(half, unit="ns")
 
 
-async def fall(dut, half=5):
+async def fall(dut: Any, half: int = 5) -> None:
     """Drive clk_in low and wait half a period."""
     dut.clk_in.value = 0
-    await Timer(half, units="ns")
+    await Timer(half, unit="ns")
 
 
-async def reset_pulse(dut, width):
+async def reset_pulse(dut: Any, width: int) -> None:
     """Pulse reset for width ns, then release it and wait 1 ns."""
     dut.clk_in.value = 0
     dut.reset.value = 1
@@ -35,7 +39,7 @@ async def reset_pulse(dut, width):
 
 
 @cocotb.test()
-async def one_hot_property(dut):
+async def one_hot_property(dut: Any) -> None:
     """Check the one-hot outputs.
 
     Assegura que durante a fase alta exatamente UMA saída é '1'
@@ -58,11 +62,11 @@ async def one_hot_property(dut):
             sum(high) == 1,
             f"[one_hot] cycle {i} high: esperado 1 bit ativo, obteve {high}",
         )
-    dut._log.info("one_hot_property: OK")
+    LOG.info("one_hot_property: OK")
 
 
 @cocotb.test()
-async def async_reset_immediate_clear(dut):
+async def async_reset_immediate_clear(dut: Any) -> None:
     """Check the asynchronous reset.
 
     Verifica que reset assíncrono limpa as saídas imediatamente quando
@@ -95,11 +99,11 @@ async def async_reset_immediate_clear(dut):
 
     dut.reset.value = 0
     await Timer(1, "ns")
-    dut._log.info("async_reset_immediate_clear: OK")
+    LOG.info("async_reset_immediate_clear: OK")
 
 
 @cocotb.test()
-async def release_reset_alignment(dut):
+async def release_reset_alignment(dut: Any) -> None:
     """Check the behaviour after releasing the reset.
 
     Depois de liberar reset, garante-se comportamento determinístico:
@@ -130,12 +134,12 @@ async def release_reset_alignment(dut):
         sum(high2) == 1 and sum(high3) == 1,
         "[release align] subsequentes devem ser one-hot",
     )
-    dut._log.info(f"release alignment highs: {high1} -> {high2} -> {high3}")
-    dut._log.info("release_reset_alignment: OK")
+    LOG.info("release alignment highs: %s -> %s -> %s", high1, high2, high3)
+    LOG.info("release_reset_alignment: OK")
 
 
 @cocotb.test()
-async def output_changes_only_on_rising_edge(dut):
+async def output_changes_only_on_rising_edge(dut: Any) -> None:
     """Check that the outputs change only on the rising edge.
 
     Garante que a mudança de saída acontece na borda de subida, já que
@@ -173,11 +177,11 @@ async def output_changes_only_on_rising_edge(dut):
     check(sum(on_rise) == 1, f"[edge] após subida esperado one-hot: {on_rise}")
     check(later == on_rise, f"[edge] estabilidade: {on_rise} vs {later}")
 
-    dut._log.info("output_changes_only_on_rising_edge: OK")
+    LOG.info("output_changes_only_on_rising_edge: OK")
 
 
 @cocotb.test()
-async def long_run_no_glitches(dut):
+async def long_run_no_glitches(dut: Any) -> None:
     """Run many cycles looking for glitches.
 
     Executa muitos ciclos para detectar glitches intermitentes e
@@ -185,7 +189,7 @@ async def long_run_no_glitches(dut):
     """
     await reset_pulse(dut, 2)
 
-    prev_high = None
+    prev_high: tuple[int, int, int] | None = None
     for i in range(120):
         await rise(dut, half=2)
         high = outputs(dut)
@@ -197,4 +201,4 @@ async def long_run_no_glitches(dut):
         low = outputs(dut)
         check(low == ZEROS, f"[long] low @i={i} expected zeros, got {low}")
 
-    dut._log.info("long_run_no_glitches: OK")
+    LOG.info("long_run_no_glitches: OK")
