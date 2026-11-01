@@ -48,7 +48,7 @@ from pathlib import Path
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer, with_timeout
-from riscv_tools.mailbox import word_offset
+from riscv_tools.htif import word_offset
 from riscv_tools.mem_validator import compare_bytes, load_golden
 
 # Must stay in sync with config.yaml's memory.tohost_addr and boot_rom.S's
@@ -60,7 +60,7 @@ from riscv_tools.mem_validator import compare_bytes, load_golden
 #
 # dut.ram_addr below is the raw top-level bus (rv32im_pipeline_core's own
 # ram_addr output, i.e. exmem_alu_out), an ABSOLUTE byte address, not
-# RAM-relative, unlike the real-hardware JTAG path (mailbox.word_offset()'s
+# RAM-relative, unlike the real-hardware JTAG path (htif.word_offset()'s
 # default). relative=False picks the bus-snoop convention instead, see
 # word_offset's own docstring.
 TOHOST_ADDR = 0x0002FFE8
