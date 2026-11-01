@@ -34,23 +34,23 @@ all: paths memory-map check test
 # put in the work directory.
 check:
 	@mkdir -p $(WDIR)
-	@$(GHDL) -a $(STD) --work=work --workdir=$(WDIR) $$(uv run riscv-tools vhdl-sort $(SIM_VHDL))
+	@$(GHDL) -a $(STD) --work=work --workdir=$(WDIR) $$(riscv-tools vhdl-sort $(SIM_VHDL))
 	@printf '00000000\n' > $(WDIR)/default.hex
 	@cd $(WDIR) && $(GHDL) -e $(STD) --workdir=. rv32i3stage_core_sim_test
 	@echo "the simulation top builds"
-	@$(GHDL) -a $(STD) --work=work --workdir=$(WDIR) $$(uv run riscv-tools vhdl-sort $(SIM_VHDL) $(SDRAM_VHDL))
+	@$(GHDL) -a $(STD) --work=work --workdir=$(WDIR) $$(riscv-tools vhdl-sort $(SIM_VHDL) $(SDRAM_VHDL))
 	@cd $(WDIR) && $(GHDL) -e $(STD) --workdir=. rv32im_sdram_sim_test
 	@echo "the SDRAM platform's simulation top builds"
-	@$(GHDL) -a $(STD) --work=work --workdir=$(WDIR) $$(uv run riscv-tools vhdl-sort $(SIM_VHDL) $(SDRAM_VHDL) $(FLASH_VHDL))
+	@$(GHDL) -a $(STD) --work=work --workdir=$(WDIR) $$(riscv-tools vhdl-sort $(SIM_VHDL) $(SDRAM_VHDL) $(FLASH_VHDL))
 	@cd $(WDIR) && $(GHDL) -e $(STD) --workdir=. rv32im_sdram_flash_sim_test
 	@echo "the simulation top of the platform with the FLASH behind the caches builds"
 
 # Every copy of the memory map (config, linker flags, boot ROM, runtime, the core's
 # VHDL, the Quartus IPs) agrees with platform.yaml.
 memory-map:
-	uv run riscv-tools --root . check-memory-map --platform $(P)/platform.yaml
-	uv run riscv-tools --root . check-memory-map --platform $(PS)/platform.yaml
-	uv run riscv-tools --root . check-memory-map --platform $(PF)/platform.yaml
+	riscv-tools --root . check-memory-map --platform $(P)/platform.yaml
+	riscv-tools --root . check-memory-map --platform $(PS)/platform.yaml
+	riscv-tools --root . check-memory-map --platform $(PF)/platform.yaml
 
 # Per-entity cocotb tests of the RTL of the platform (`make test TEST=clk_gen_3way`).
 test:
@@ -58,7 +58,7 @@ test:
 
 # Every path the configuration lists exists.
 paths:
-	uv run riscv-tools --root . check-paths --manifest paths.yaml
+	riscv-tools --root . check-paths --manifest paths.yaml
 
 clean:
 	rm -rf build

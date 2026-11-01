@@ -69,10 +69,10 @@ checks:
 
   # --- VHDL of the core ----------------------------------------------------
   - {name: core BOOT_ROM_SIZE_BYTES, file: ../Core/common/mem_map_consts.vhd, pattern: 'BOOT_ROM_SIZE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: BOOT_ROM.size}
-  - {name: core FLASH_EXT_BASE_BYTES, file: ../Core/common/mem_map_consts.vhd, pattern: 'FLASH_EXT_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: FLASH.base}
+  - {name: core FLASH_EXT_BASE_BIT, file: ../Core/common/mem_map_consts.vhd, pattern: 'FLASH_EXT_BASE_BIT\s*:\s*natural\s*:=\s*(\d+)', expect: clog2(FLASH.base)}
 
   # --- the SDRAM is the RAM: the core decodes it as its external data region -------------
-  - {name: core SDRAM_BASE_BYTES, file: ../Core/common/mem_map_consts.vhd, pattern: 'SDRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
+  - {name: core SDRAM_BASE_BIT, file: ../Core/common/mem_map_consts.vhd, pattern: 'SDRAM_BASE_BIT\s*:\s*natural\s*:=\s*(\d+)', expect: clog2(RAM.base)}
 
   # --- the testbench and the test programs' header (only in RV32IM's tree) -----------------
   - {name: testbench TOHOST_ADDR, file: platforms/sdram/testbench/test_c_program.py, pattern: '^TOHOST_ADDR = (0x[0-9A-Fa-f]+)', expect: tohost.base}

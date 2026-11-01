@@ -1,5 +1,5 @@
 # Every file path this repository's configuration references, checked by
-#   uv run riscv-tools --root . check-paths --manifest paths.yaml
+#   riscv-tools --root . check-paths --manifest paths.yaml
 #
 # The platform configs are written relative to the project that runs the tests
 # (../Core, ../TopLevel/...): from this root, `..` holds the sibling checkouts too,

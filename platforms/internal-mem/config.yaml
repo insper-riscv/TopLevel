@@ -227,6 +227,11 @@ sim:
     - ../Core/common/wb_sel_consts.vhd
     - ../Core/common/pc_src_consts.vhd
     - ../Core/common/mem_map_consts.vhd
+    - ../Core/common/fwd_consts.vhd
+    - ../Core/common/word_consts.vhd
+    - ../Core/M/muldiv_consts.vhd
+    - ../Core/Zicsr/csr_value_consts.vhd
+    - ../Core/Zicsr/trap_consts.vhd
     - ../Common-Components/src/generic_register.vhd
     - ../Common-Components/src/adder.vhd
     - ../Common-Components/src/mux_2x1.vhd
@@ -248,6 +253,7 @@ sim:
     - ../Core/M/m_decode.vhd
     - ../Core/M/booth_multiplier_rv32.vhd
     - ../Core/M/non_restoring_divider_rv32.vhd
+    - ../Core/M/muldiv_fusion.vhd
     - ../Core/M/multdiv.vhd
     - ../Core/Zicsr/csr_decode.vhd
     - ../Core/Zicsr/csr_addr_consts.vhd

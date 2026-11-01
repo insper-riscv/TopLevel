@@ -3,16 +3,13 @@ name = "riscv-toplevel"
 version = "0.1.0"
 description = "Platforms of the RV32 SoC: top levels, Quartus project, runtime, memory map and the testbench of the top."
 license = "Apache-2.0"
-# Same range as riscv-tools (tools/Tools/pyproject.toml): one venv serves both.
+# Same Python as the ci-vhdl image of Infra, which also carries riscv-tools.
 requires-python = ">=3.14,<3.15"
 dependencies = [
-    # [sim] pulls cocotb/cocotb-tools at the versions riscv-tools is pinned to,
-    # which tests/python/runner.py uses.
-    "riscv-tools[sim]",
+    # tests/python/runner.py runs the entity tests with cocotb (and its cocotb_tools),
+    # at the version of the ci-vhdl image. riscv-tools comes from the image, not from here.
+    "cocotb==2.1.0",
 ]
 
 [tool.uv]
 package = false
-
-[tool.uv.sources]
-riscv-tools = { path = "tools/Tools", editable = true }
