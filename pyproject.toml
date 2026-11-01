@@ -110,19 +110,19 @@ typeCheckingMode = "strict"
 reportMissingModuleSource = "none"
 include = ["platforms", "tests"]
 # Where the ci-vhdl image installs riscv-tools.
-extraPaths = ["/opt/riscv-tools/lib/python3.14/site-packages"]
+extraPaths = ["/opt/riscv-tools/riscv-tools/lib/python3.14/site-packages"]
 
 [tool.pyrefly]
 preset = "strict"
 project-includes = ["platforms", "tests"]
-search-path = ["/opt/riscv-tools/lib/python3.14/site-packages"]
+search-path = ["/opt/riscv-tools/riscv-tools/lib/python3.14/site-packages"]
 python-version = "3.14"
 
 [tool.pylint.main]
 ignore = [".venv", "build", "sim_build", "Common-Components"]
 fail-under = 10
 # riscv-tools is installed by the ci-vhdl image, outside the project environment.
-init-hook = "import sys; sys.path.append('/opt/riscv-tools/lib/python3.14/site-packages')"
+init-hook = "import sys; sys.path.append('/opt/riscv-tools/riscv-tools/lib/python3.14/site-packages')"
 
 [tool.pylint.similarities]
 # The testbenches of two platforms read the same SIM_* variables. Each one is loaded alone, from its
