@@ -139,7 +139,7 @@ fato pela primeira vez nesta sessão:
    sem zero-padding (`[format %x $VALUE]` em vez de `[format %08x $VALUE]`),
    o que fazia o `write_content_to_memory` do Quartus rejeitar a escrita
    ("Data specified in the string does not match the number of bits...").
-   Afeta `mailbox.pulse_fromhost` (a escrita de restart de cada teste).
+   Afeta `htif.pulse_fromhost` (a escrita de restart de cada teste).
 
 2. **`mem_validator/core.py`** interpretava o conteúdo do `.mif` de dump de
    RAM sempre como hexadecimal, mas `save_content_from_memory_to_file` do
