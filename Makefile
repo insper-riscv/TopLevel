@@ -19,6 +19,9 @@ SIM_VHDL := $(shell find ../Core/common ../Core/I ../Core/M ../Core/cores ../Mem
 # The SDRAM platform's simulation top adds the SDRAM (bridge, controller, chip model) of Memory.
 SDRAM_VHDL := $(shell find ../Memory/external/sdram -name '*.vhd' -not -path '*/hw/*' | sort) $(PS)/rtl/rv32im_sdram_sim_test.vhd
 
+# The SDRAM platform's simulation top adds the SDRAM (bridge, controller, chip model) of Memory.
+SDRAM_VHDL := $(shell find ../Memory/external/sdram -name '*.vhd' -not -path '*/hw/*' | sort) $(PS)/rtl/rv32im_sdram_sim_test.vhd
+
 .PHONY: check memory-map paths test all clean
 
 all: paths memory-map check test
