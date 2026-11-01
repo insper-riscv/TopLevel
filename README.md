@@ -1,35 +1,39 @@
 # TopLevel
 
-The platforms of the RV32 SoC: what wires the core, the memories and the
-peripherals into something that runs, and everything that depends on that wiring.
-One job: describe and build a platform. The core, the memories, the peripherals,
-the test programs and the certification live in other repositories of
-[insper-riscv](https://github.com/insper-riscv).
+🌐 [Português](README.md) · [English](README.en.md)
 
-## A platform: `platforms/<name>/`
+Plataformas do SoC RISC-V RV32: o que conecta o núcleo, as memórias e os periféricos em algo que executa, e tudo que depende dessa conexão. O repositório descreve e constrói uma plataforma. O núcleo, as memórias, os periféricos, os programas de teste e a certificação ficam em outros repositórios da organização [insper-riscv](https://github.com/insper-riscv).
 
-Today there is one, `internal-mem`: a Cyclone V 5CEBA4F23 with BOOT_ROM, FLASH and
-RAM inside the FPGA.
+## 1. Documentação
 
-| Path | What |
+- [AUTHORS.md](AUTHORS.md): autores com commits no repositório, com nome e conta do GitHub.
+- [CONTRIBUTING.md](CONTRIBUTING.md): regras obrigatórias de contribuição, normas VHDL-2008, C23 e Python, regras de documentação e verificação antes de abrir Pull Request.
+- [CITATION.cff](CITATION.cff): metadados para citação do software.
+- [docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md): arquitetura de memória BOOT_ROM, FLASH e RAM.
+- [docs/CRT0_BOOT_REFERENCE.md](docs/CRT0_BOOT_REFERENCE.md): estado de boot, `crt0` da picolibc e `boot_rom.S`.
+- [docs/PROGRAM_UPDATE_HANDOFF.md](docs/PROGRAM_UPDATE_HANDOFF.md): substituição de um programa por outro e passagem de boot entre testes.
+- [docs/RUNTIME.md](docs/RUNTIME.md): runtime C, arquivo de plataforma, `stdout` e Spike.
+- [docs/HARDWARE_PROGRAMMING.md](docs/HARDWARE_PROGRAMMING.md): programação da placa.
+- [docs/SIMULACAO_TOPO_FPGA.md](docs/SIMULACAO_TOPO_FPGA.md): simulação do topo de hardware com as memórias reais do Quartus.
+
+## 2. Plataforma em `platforms/<nome>/`
+
+A plataforma existente é a `internal-mem`: uma Cyclone V 5CEBA4F23 com BOOT_ROM, FLASH e RAM dentro da FPGA.
+
+| Caminho | Conteúdo |
 | :--- | :--- |
-| `platform.yaml` | the memory map (regions, reserved words, boot entry points, peripheral windows) and the list of every hand-written copy of it, checked by `riscv-tools check-memory-map` |
-| `quartus/` | the Quartus project of the board: `core_fpga_test.vhd` (the hardware top), `.qpf`, `.qsf`, `.sdc`, the initial `.mif` images |
-| `pll/` | the PLL IP (`pll.vhd`, `pll_0002.v`, 50 MHz in three phases), and `pll_sim.vhd`, the behavioral stand-in that simulates it |
-| `rtl/` | the simulation top `rv32i3stage_core_sim_test` (plain VHDL arrays for memory, in place of the IPs), `clk_gen_3way`, `Blinky` |
-| `runtime/` | what the platform adds to the toolchain's picolibc: `rv32im-fpga.specs` (the GCC specs file with the memory map), `boot_rom.S` and `boot_rom.ld`, `_exit.c`, `stdio.c`, and `spike_exit.S` (the Spike stand-in for the boot ROM's `rv32_wait_restart`) |
-| `testbench/` | `test_c_program.py`, the cocotb testbench that watches the RAM write bus for a program's PASS/FAIL |
-| `../../tests/python/` | per-entity cocotb tests of the platform's RTL (`clk_gen_3way`) and the catalog (`tests.json`) that drives them |
-| `config.yaml`, `config.fpga-sim.yaml` | the `riscv-tools` configuration of the platform: toolchain, memory, Quartus, simulation (the simulation top, and the hardware top on Intel's `altera_mf` models) |
+| `platform.yaml` | Mapa de memória (regiões, palavras reservadas, pontos de entrada de boot e janelas dos periféricos) e a lista de cada cópia manuscrita dele, verificada por `riscv-tools check-memory-map` |
+| `quartus/` | Projeto Quartus da placa: `core_fpga_test.vhd` (topo de hardware), `.qpf`, `.qsf`, `.sdc` e as imagens `.mif` iniciais |
+| `pll/` | IP da PLL (`pll.vhd`, `pll_0002.v`, 50 MHz em três fases) e `pll_sim.vhd`, o substituto comportamental que a simula |
+| `rtl/` | Topo de simulação `rv32i3stage_core_sim_test` (arrays VHDL puros no lugar dos IPs de memória), `clk_gen_3way` e `Blinky` |
+| `runtime/` | O que a plataforma acrescenta à picolibc da toolchain: `rv32im-fpga.specs` (arquivo de specs do GCC com o mapa de memória), `boot_rom.S`, `boot_rom.ld`, `_exit.c`, `stdio.c` e `spike_exit.S` (substituto no Spike da `rv32_wait_restart` da boot ROM) |
+| `testbench/` | `test_c_program.py`, testbench cocotb que observa o barramento de escrita da RAM para o PASS/FAIL de um programa |
+| `../../tests/python/` | Testes por entidade em cocotb do RTL da plataforma (`clk_gen_3way`) e o catálogo (`tests.json`) que os conduz |
+| `config.yaml`, `config.fpga-sim.yaml` | Configuração do `riscv-tools` para a plataforma: toolchain, memória, Quartus e simulação (do topo de simulação e do topo de hardware sobre os modelos `altera_mf` da Intel) |
 
-`docs/` explains the memory architecture, the boot, how a new program replaces the
-old one, the runtime, how to program the board and how the hardware top is
-simulated.
+## 3. Uso por um Projeto
 
-## How a project uses it
-
-A project that runs tests on this platform (today, [Tests](https://github.com/insper-riscv/Tests))
-extends the platform's configuration and adds only its own paths:
+Um projeto que executa testes nesta plataforma, hoje o [Tests](https://github.com/insper-riscv/Tests), estende a configuração da plataforma e acrescenta só os próprios caminhos:
 
 ```yaml
 # Tests/tools/riscv_build/config.yaml
@@ -37,48 +41,25 @@ extends: ../../../TopLevel/platforms/internal-mem/config.yaml
 paths: {include_dir: ..., build_dir: build, c_dir: c, asm_dir: asm}
 ```
 
-The paths inside the platform's `config.yaml` are written relative to that
-project's root, with the repositories as siblings (`../Core`, `../Memory`,
-`../TopLevel`), the same layout `RV32IM`'s submodules have. `sim.python_path`
-puts `testbench/` on the search path of the simulation's test module.
+Os caminhos dentro do `config.yaml` da plataforma são relativos à raiz do projeto consumidor, com os repositórios lado a lado (`../Core`, `../Memory`, `../TopLevel`), o mesmo arranjo dos submódulos do `RV32IM`. O campo `sim.python_path` coloca `testbench/` no caminho de busca do módulo de teste da simulação.
 
-## Use
+## 4. Verificação e Execução
 
 ```bash
 git clone --recurse-submodules https://github.com/insper-riscv/TopLevel.git
-git clone https://github.com/insper-riscv/Core.git     # next to it
-git clone https://github.com/insper-riscv/Memory.git   # next to it
+git clone https://github.com/insper-riscv/Core.git     # ao lado
+git clone https://github.com/insper-riscv/Memory.git   # ao lado
 cd TopLevel
 uv sync
-make paths        # every path the configs and the .qsf list exists
-make memory-map   # every copy of the memory map agrees with platform.yaml
-make check        # GHDL builds the simulation top
-make test         # per-entity cocotb tests of the RTL (clk_gen_3way)
+
+make paths        # Existência de todos os caminhos listados nas configurações e no .qsf
+make memory-map   # Concordância de cada cópia do mapa de memória com platform.yaml
+make check        # Construção do topo de simulação no GHDL
+make test         # Testes por entidade em cocotb do RTL (clk_gen_3way)
 ```
 
-The tools (GHDL, uv) come from the `infra-toolchain` image of
-[Infra](https://github.com/insper-riscv/Infra); CI runs there. The hardware-top
-simulation needs Quartus' `altera_mf` library and runs where Quartus is
-installed (see `docs/SIMULACAO_TOPO_FPGA.md`).
+As ferramentas (GHDL e uv) vêm da imagem `infra-toolchain` do repositório [Infra](https://github.com/insper-riscv/Infra), onde a integração contínua executa. A simulação do topo de hardware exige a biblioteca `altera_mf` do Quartus e roda onde o Quartus está instalado, conforme [docs/SIMULACAO_TOPO_FPGA.md](docs/SIMULACAO_TOPO_FPGA.md).
 
-## Not yet
+---
 
-- **The top is not generated**: `core_fpga_test.vhd` and the simulation top are
-  written by hand and *verified* against `platform.yaml` (`make memory-map`). A
-  generator comes after this restructuring.
-- **Names**: the simulation top is still `rv32i3stage_core_sim_test`, a name from
-  the 3-stage core it was written for (it instantiates the pipeline).
-
-## Where this came from
-
-`quartus/`, `pll/` and `rtl/` moved from `insper-riscv/RV32` (`tests/FPGA/core`,
-`src/PLL`, `src/Blinky.vhd`, `src/clk_gen_3way.vhd`,
-`src/rv32i3stage_core_sim_test.vhd`); `runtime/`, `testbench/`, the configs,
-`platform.yaml` and `docs/` from `insper-riscv/Tests`, with their history and
-authorship (`git filter-repo`). The generated Quartus simulation output, the old
-`.tcl` JTAG helpers and the other leftovers of `tests/FPGA/core` were archived as
-tags of RV32. The pre-move state is the tag `pre-refactor` in each repository.
-
-## License
-
-Apache License 2.0, see [LICENSE](LICENSE).
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](LICENSE).
