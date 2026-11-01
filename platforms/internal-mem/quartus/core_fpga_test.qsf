@@ -92,6 +92,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/common/hazard_detection_u
 set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/booth_multiplier_rv32.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/non_restoring_divider_rv32.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/muldiv_fusion.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/multdiv.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_decode.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_addr_consts.vhd
@@ -125,10 +126,7 @@ set_global_assignment -name QIP_FILE ../../../../Memory/ips/RAM1PORT/ram1port.qi
 set_global_assignment -name QIP_FILE ../../../../Memory/ips/FLASH_MEM1PORT/flash_mem1port.qip
 set_global_assignment -name VHDL_FILE core_fpga_test.vhd
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
-set_global_assignment -name VHDL_FILE ../../../../Core/M/div.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/M/decoderM.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
-set_global_assignment -name VHDL_FILE ../../../../Core/common/extendSigned.vhd
 
 #============================================================
 # FAMILY "Cyclone V"

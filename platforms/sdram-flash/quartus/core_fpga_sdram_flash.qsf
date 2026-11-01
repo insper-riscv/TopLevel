@@ -91,6 +91,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/common/hazard_detection_u
 set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/booth_multiplier_rv32.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/non_restoring_divider_rv32.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/muldiv_fusion.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/multdiv.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_decode.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_addr_consts.vhd
@@ -513,4 +514,4 @@ set_instance_assignment -name PAD_TO_INPUT_REGISTER_DELAY 0 -to DRAM_DQ[*]
 # Synthesis and fitter effort chosen by the sweep of TX2.1 (documento 15): this mode and seed close the core
 # clocks at 50 MHz in the slow 85C model, where the default effort leaves them 1.3 to 2.9 ns short.
 set_global_assignment -name OPTIMIZATION_MODE "HIGH PERFORMANCE EFFORT"
-set_global_assignment -name SEED 1
+set_global_assignment -name SEED 5

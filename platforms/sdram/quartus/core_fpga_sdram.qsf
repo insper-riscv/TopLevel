@@ -91,6 +91,7 @@ set_global_assignment -name VHDL_FILE ../../../../Core/common/hazard_detection_u
 set_global_assignment -name VHDL_FILE ../../../../Core/M/m_decode.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/booth_multiplier_rv32.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/non_restoring_divider_rv32.vhd
+set_global_assignment -name VHDL_FILE ../../../../Core/M/muldiv_fusion.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/M/multdiv.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_decode.vhd
 set_global_assignment -name VHDL_FILE ../../../../Core/Zicsr/csr_addr_consts.vhd
