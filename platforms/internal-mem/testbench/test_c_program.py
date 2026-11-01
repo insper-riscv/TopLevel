@@ -47,26 +47,33 @@ from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer, with_timeout
+from cocotb.triggers import (
+    ClockCycles,
+    FallingEdge,
+    RisingEdge,
+    Timer,
+    with_timeout,
+)
 from riscv_tools.htif import word_offset
 from riscv_tools.mem_validator import compare_bytes, load_golden
 
-# Must stay in sync with config.yaml's memory.tohost_addr and boot_rom.S's
-# own hardcoded tohost clear (the tohost write itself still comes from the
-# TEST's own RV32_PASS()/RV32_FAIL(), compiled into FLASH; boot_rom.S only
-# CLEARS it on _reset). Not sourced from config.yaml here since
-# ROM_simulation already takes its program image via a VHDL generic, not
-# env/argv (see module docstring).
-#
-# dut.ram_addr below is the raw top-level bus (rv32im_pipeline_core's own
-# ram_addr output, i.e. exmem_alu_out), an ABSOLUTE byte address, not
+# Must stay in sync with config.yaml's memory.tohost_addr and
+# boot_rom.S's own hardcoded tohost clear (the tohost write itself still
+# comes from the TEST's own RV32_PASS()/RV32_FAIL(), compiled into
+# FLASH; boot_rom.S only CLEARS it on _reset). Not sourced from
+# config.yaml here since ROM_simulation already takes its program image
+# via a VHDL generic, not env/argv (see module docstring).  dut.ram_addr
+# below is the raw top-level bus (rv32im_pipeline_core's own ram_addr
+# output, i.e. exmem_alu_out), an ABSOLUTE byte address, not
 # RAM-relative, unlike the real-hardware JTAG path (htif.word_offset()'s
 # default). relative=False picks the bus-snoop convention instead, see
 # word_offset's own docstring.
 TOHOST_ADDR = 0x0002FFE8
 TOHOST_WORD_OFFSET = word_offset(0, TOHOST_ADDR, relative=False)
-# tohost low word: 1 is a pass, (code << 1) | 1 is a failure with that code.
+# tohost low word: 1 is a pass, (code << 1) | 1 is a failure with that
+# code.
 TOHOST_PASS = 1
+FULL_WORD = 0xF
 
 # RAM_BASE/GOLDEN_PATH come from sim_runner.run_test's extra_env, not
 # hardcoded like TOHOST_ADDR above: GOLDEN_PATH is inherently
@@ -93,12 +100,15 @@ SIM_RESET = os.environ.get("SIM_RESET", "reset")
 SIM_RESET_ACTIVE = int(os.environ.get("SIM_RESET_ACTIVE", "1"))
 SIM_SAMPLE_CLOCK = os.environ.get("SIM_SAMPLE_CLOCK", SIM_CLOCK)
 TIMEOUT_CYCLES = int(os.environ.get("SIM_TIMEOUT_CYCLES", "200000"))
-# More clocks the top has, "PORT:period_ns" separated by commas (for example the SDRAM
-# platform's CLK_MEM:7). They are driven for the whole test and need no reset of their own.
+# More clocks the top has, "PORT:period_ns" separated by commas (for
+# example the SDRAM platform's CLK_MEM:7). They are driven for the whole
+# test and need no reset of their own.
 EXTRA_CLOCKS = [
     (name, int(period))
     for name, period in (
-        item.split(":") for item in os.environ.get("SIM_EXTRA_CLOCKS", "").split(",") if item
+        item.split(":")
+        for item in os.environ.get("SIM_EXTRA_CLOCKS", "").split(",")
+        if item
     )
 ]
 
@@ -112,13 +122,20 @@ UART_ERRORS_FINAL = b"P"
 UART_BIT_TIME_NS = round(1_000_000_000 / 115_200)
 
 
+def check(condition: bool, message: str) -> None:
+    """Raise AssertionError with the message when condition is false."""
+    if not condition:
+        raise AssertionError(message)
+
+
 async def receive_uart_byte(uart_tx) -> int:
+    """Receive one 8N1 byte from the UART TX line."""
     # Detecta o início do quadro 8N1.
     await FallingEdge(uart_tx)
 
     # Confere o centro do start bit.
     await Timer(UART_BIT_TIME_NS // 2, unit="ns")
-    assert int(uart_tx.value) == 0, "UART start bit inválido"
+    check(int(uart_tx.value) == 0, "UART start bit inválido")
 
     value = 0
 
@@ -129,7 +146,7 @@ async def receive_uart_byte(uart_tx) -> int:
 
     # Amostra o stop bit.
     await Timer(UART_BIT_TIME_NS, unit="ns")
-    assert int(uart_tx.value) == 1, "UART stop bit inválido"
+    check(int(uart_tx.value) == 1, "UART stop bit inválido")
 
     return value
 
@@ -138,6 +155,7 @@ async def receive_uart_message(
     uart_tx,
     byte_count: int = len(UART_TX_EXPECTED),
 ) -> bytes:
+    """Receive a message of byte_count bytes from the UART TX line."""
     received = bytearray()
 
     for _ in range(byte_count):
@@ -147,6 +165,7 @@ async def receive_uart_message(
 
 
 async def send_uart_byte(uart_rx, value: int) -> None:
+    """Send one 8N1 byte to the UART RX line."""
     # Start bit.
     uart_rx.value = 0
     await Timer(UART_BIT_TIME_NS, unit="ns")
@@ -162,6 +181,7 @@ async def send_uart_byte(uart_rx, value: int) -> None:
 
 
 async def send_uart_message(uart_rx, message: bytes) -> None:
+    """Send a message to the UART RX line, byte by byte."""
     # Mantém a linha ociosa antes do primeiro start bit.
     uart_rx.value = 1
     await Timer(UART_BIT_TIME_NS, unit="ns")
@@ -171,10 +191,12 @@ async def send_uart_message(uart_rx, message: bytes) -> None:
 
 
 async def exchange_uart_errors(uart_rx, uart_tx) -> bytes:
-    """Exercise the same coordinated protocol as uart_hardware_test.py."""
+    """Run the coordinated protocol of uart_hardware_test.py."""
     received = bytearray()
 
-    received.extend(await receive_uart_message(uart_tx, len(UART_ERRORS_PREFIX)))
+    received.extend(
+        await receive_uart_message(uart_tx, len(UART_ERRORS_PREFIX))
+    )
 
     ready_capture = cocotb.start_soon(
         receive_uart_message(uart_tx, len(UART_ERRORS_READY))
@@ -192,19 +214,162 @@ async def exchange_uart_errors(uart_rx, uart_tx) -> bytes:
     received.extend(await burst_capture)
     return bytes(received)
 
+
 def retired_now(dut) -> int:
     """1 when an instruction retires on this clock edge, 0 otherwise.
 
-    The top exposes the retirement pulse of the core (valid in EX, pipeline advancing, no exception).
+    The top exposes the retirement pulse of the core (valid in EX,
+    pipeline advancing, no exception).
     """
     try:
         return int(dut.core_retire.value == 1)
-    except (AttributeError, ValueError):
+    except AttributeError, ValueError:
         return 0
+
+
+def start_uart(dut, test_name):
+    """Start the UART capture that the named test needs.
+
+    Returns
+    -------
+    tuple
+        The expected bytes and the capture task, both None when the
+        test does not use the UART.
+    """
+    if test_name == "uart-tx":
+        expected = UART_TX_EXPECTED
+    elif test_name == "uart-echo":
+        expected = UART_ECHO_EXPECTED
+    elif test_name == "uart-errors":
+        expected = (
+            UART_ERRORS_PREFIX
+            + UART_ERRORS_READY
+            + UART_BURST_PAYLOAD
+            + UART_ERRORS_FINAL
+        )
+    else:
+        return None, None
+    if test_name != "uart-tx":
+        dut.UART_RX.value = 1
+    if test_name == "uart-errors":
+        capture = exchange_uart_errors(dut.UART_RX, dut.UART_TX)
+    else:
+        capture = receive_uart_message(dut.UART_TX, len(expected))
+    return expected, cocotb.start_soon(capture)
+
+
+class RamBus:
+    """Rebuild the RAM content from the writes seen on its bus.
+
+    ``ram_bytes`` maps a RAM-relative byte address to its value. It is
+    updated on every RAM write seen on the bus, honoring ram_byteena
+    the same way ram_simulation.vhd itself does (mask bit i gates byte
+    lane i of the 32-bit word at the write's own word-aligned
+    address), so it ends up an exact reconstruction of whatever
+    RAM_simulation actually stored, not just a record of the
+    tohost/results writes a test happens to make.
+    """
+
+    def __init__(self, dut) -> None:
+        """Watch the RAM bus of the given top-level."""
+        self.dut = dut
+        self.ram_bytes: dict[int, int] = {}
+
+    def _record(self, addr: int, wdata: int, byteena: int) -> None:
+        """Store the bytes that the write enables."""
+        word_base = addr - (addr % 4)
+        for i in range(4):
+            if byteena & (1 << i):
+                self.ram_bytes[word_base + i - RAM_BASE] = (
+                    wdata >> (8 * i)
+                ) & 0xFF
+
+    def tohost_write(self) -> int | None:
+        """Record the write of this edge and return a tohost write.
+
+        Returns
+        -------
+        int or None
+            The word written to the low word of tohost, or None when
+            this edge writes anything else.
+        """
+        dut = self.dut
+        if dut.ram_wren.value != 1 or dut.ram_en.value != 1:
+            return None
+        try:
+            addr = int(dut.ram_addr.value)
+        except ValueError:
+            # Undefined ('U'/'X') address -- nothing meaningful to do
+            # with this write at all, not even locate it.
+            return None
+
+        # A write whose DATA (not address) is undefined means some
+        # earlier read came back 'U' and propagated through the ALU
+        # into this store. Leave these bytes out of ram_bytes rather
+        # than crashing the whole test on a raw int() conversion:
+        # compare_bytes reports them "missing" if golden.json expects
+        # a value here, a clearer diagnostic than an uncaught error.
+        try:
+            wdata = int(dut.ram_wdata.value)
+            byteena = int(dut.ram_byteena.value)
+        except ValueError:
+            return None
+
+        self._record(addr, wdata, byteena)
+        is_tohost = addr // 4 == TOHOST_WORD_OFFSET
+        if is_tohost and wdata & 1 and byteena == FULL_WORD:
+            return wdata
+        return None
+
+
+async def finish_pass(dut, test_name, bus, uart, counters) -> None:
+    """Check the UART and the RAM content after a tohost PASS.
+
+    Parameters
+    ----------
+    dut : object
+        Top-level of the simulation.
+    test_name : str
+        Name of the running test.
+    bus : RamBus
+        RAM content reconstructed from the bus.
+    uart : tuple
+        Expected bytes, capture task and drive task of the UART.
+    counters : tuple
+        Clock cycles and instructions retired until the PASS.
+    """
+    expected, capture, drive = uart
+    if drive is not None:
+        await with_timeout(drive, 1, "ms")
+    if capture is not None:
+        received = await with_timeout(capture, 1, "ms")
+        check(
+            received == expected,
+            f"UART TX incorreto: esperado {expected!r}, recebido {received!r}",
+        )
+        dut._log.info(f"UART TX recebido: {received!r}")
+    cycles_used, retired = counters
+    dut._log.info("PASS")
+    dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
+    dut._log.info(f"CORE CYCLES {cycles_used} INSTRUCTIONS RETIRED {retired}")
+    if GOLDEN_PATH is None:
+        return
+    matches = compare_bytes(
+        bus.ram_bytes,
+        load_golden(GOLDEN_PATH),
+        actual_label=test_name,
+        golden_label=GOLDEN_PATH.name,
+    )
+    check(
+        matches,
+        f"{test_name}: tohost PASS but RAM content doesn't match "
+        f"{GOLDEN_PATH.name} -- see the diff above",
+    )
 
 
 @cocotb.test()
 async def test_program(dut) -> None:
+    """Run the program until it writes its result to tohost."""
     test_name = os.environ.get("TEST_NAME", "?")
     dut._log.info(f"running {test_name}")
 
@@ -213,52 +378,20 @@ async def test_program(dut) -> None:
     sample_clock = getattr(dut, SIM_SAMPLE_CLOCK)
     cocotb.start_soon(Clock(clock, SIM_CLOCK_PERIOD_NS, unit="ns").start())
     for extra_name, extra_period in EXTRA_CLOCKS:
-        cocotb.start_soon(Clock(getattr(dut, extra_name), extra_period, unit="ns").start())
-    uart_capture_task = None
-    uart_drive_task = None
-    uart_expected = None
-
-    if test_name == "uart-tx":
-        uart_expected = UART_TX_EXPECTED
-
-    elif test_name == "uart-echo":
-        uart_expected = UART_ECHO_EXPECTED
-        dut.UART_RX.value = 1
-
-    elif test_name == "uart-errors":
-        uart_expected = (
-            UART_ERRORS_PREFIX
-            + UART_ERRORS_READY
-            + UART_BURST_PAYLOAD
-            + UART_ERRORS_FINAL
+        cocotb.start_soon(
+            Clock(getattr(dut, extra_name), extra_period, unit="ns").start()
         )
-        dut.UART_RX.value = 1
-
-    if uart_expected is not None:
-        if test_name == "uart-errors":
-            uart_capture_task = cocotb.start_soon(
-                exchange_uart_errors(dut.UART_RX, dut.UART_TX)
-            )
-        else:
-            uart_capture_task = cocotb.start_soon(
-                receive_uart_message(dut.UART_TX, len(uart_expected))
-            )
+    uart_expected, uart_capture = start_uart(dut, test_name)
+    uart_drive = None
+    bus = RamBus(dut)
     cycles_used = 0
     retired = 0
-    # {RAM-relative byte address: byte value} — updated on every RAM
-    # write seen on the bus, honoring ram_byteena the same way
-    # ram_simulation.vhd itself does (mask bit i gates byte lane i of
-    # the 32-bit word at the write's own word-aligned address), so
-    # this ends up an exact reconstruction of whatever RAM_simulation
-    # actually stored — not just a record of the tohost/results
-    # writes a test happens to make.
-    ram_bytes: dict[int, int] = {}
 
     reset.value = SIM_RESET_ACTIVE
     await ClockCycles(clock, 5)
     reset.value = 1 - SIM_RESET_ACTIVE
     if test_name == "uart-echo":
-        uart_drive_task = cocotb.start_soon(
+        uart_drive = cocotb.start_soon(
             send_uart_message(dut.UART_RX, UART_ECHO_EXPECTED)
         )
     for _ in range(TIMEOUT_CYCLES):
@@ -266,76 +399,17 @@ async def test_program(dut) -> None:
         cycles_used += 1
         retired += retired_now(dut)
 
-        if dut.ram_wren.value != 1 or dut.ram_en.value != 1:
+        tohost = bus.tohost_write()
+        if tohost is None:
             continue
-
-        try:
-            addr = int(dut.ram_addr.value)
-        except ValueError:
-            # Undefined ('U'/'X') address -- nothing meaningful to do
-            # with this write at all, not even locate it.
-            continue
-
-        # A write whose DATA (not address) is undefined means some
-        # earlier read came back 'U' and propagated through the ALU
-        # into this store -- exactly the failure mode an unwired/
-        # uninitialized memory read produces (see the FLASH_MEM
-        # comment in rv32im_pipeline_core.vhd for the real bug this
-        # caught once already). Leave these bytes out of ram_bytes
-        # rather than crashing the whole test on a raw int() conversion
-        # -- compare_bytes below reports them "missing" if golden.json
-        # expects a value here, a clearer diagnostic than an uncaught
-        # ValueError.
-        try:
-            wdata = int(dut.ram_wdata.value)
-            byteena = int(dut.ram_byteena.value)
-        except ValueError:
-            wdata = None
-
-        word_base = addr - (addr % 4)
-        if wdata is not None:
-            for i in range(4):
-                if byteena & (1 << i):
-                    ram_bytes[word_base + i - RAM_BASE] = (wdata >> (8 * i)) & 0xFF
-
-        word_offset = addr // 4
-        if word_offset != TOHOST_WORD_OFFSET:
-            continue
-        if wdata is None or not wdata & 1 or byteena != 0xF:
-            continue
-
-        tohost = wdata
         if tohost == TOHOST_PASS:
-            if uart_drive_task is not None:
-                await with_timeout(uart_drive_task, 1, "ms")
-
-            if uart_capture_task is not None:
-                received = await with_timeout(uart_capture_task, 1, "ms")
-
-                if received != uart_expected:
-                    raise AssertionError(
-                        f"UART TX incorreto: esperado {uart_expected!r}, "
-                        f"recebido {received!r}"
-                    )
-
-                dut._log.info(f"UART TX recebido: {received!r}")
-            dut._log.info("PASS")
-            dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
-            dut._log.info(f"CORE CYCLES {cycles_used} INSTRUCTIONS RETIRED {retired}")
-            if GOLDEN_PATH is not None:
-                golden = load_golden(GOLDEN_PATH)
-                if not compare_bytes(
-                    ram_bytes, golden, actual_label=test_name, golden_label=GOLDEN_PATH.name
-                ):
-                    raise AssertionError(
-                        f"{test_name}: tohost PASS but RAM content doesn't match "
-                        f"{GOLDEN_PATH.name} — see the diff above"
-                    )
+            uart = (uart_expected, uart_capture, uart_drive)
+            await finish_pass(
+                dut, test_name, bus, uart, (cycles_used, retired)
+            )
             return
-        raise AssertionError(
-            f"test signalled FAIL via RV32_FAIL(), code {tohost >> 1}"
-        )
+        message = f"test signalled FAIL via RV32_FAIL(), code {tohost >> 1}"
+        raise AssertionError(message)
 
-    raise AssertionError(
-        f"timed out after {TIMEOUT_CYCLES} cycles without a PASS/FAIL signal"
-    )
+    message = f"timed out after {TIMEOUT_CYCLES} cycles without a result"
+    raise AssertionError(message)

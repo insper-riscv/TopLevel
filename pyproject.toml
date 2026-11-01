@@ -13,3 +13,79 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+# Static analysis of the Python (runner and tests), as run by the python-static-analysis job of the CI.
+[tool.ruff]
+target-version = "py314"
+line-length = 79
+extend-exclude = ["Common-Components", "build", "sim_build"]
+
+[tool.ruff.lint]
+select = [
+    # Core
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+
+    # Security
+    "S",    # flake8-bandit (Security Scanning/SAST)
+    "BLE",  # flake8-blind-except
+
+    # Import orders and formatting
+    "I",    # isort
+    "Q",    # flake8-quotes
+    "D",    # pydocstyle
+
+    # Standards and Moderization
+    "UP",   # update-checker
+    "N",    # pep8-naming,
+    "PTH",  # flake8-pathlib
+    "TID",  # flake8-tidy-imports (absolute imports only)
+
+    # Quality and Simplification
+    "B",    # flake8-bugbear
+    "G",    # flake8-logging-format
+    "PERF", # perflint
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RET",  # flake8-return
+    "PL",   # pylint
+    "RUF",  # ruff linting rules
+
+    # Cleanup and Unused Code
+    "ERA",  # flake8-eradicate
+    "ARG",  # flake8-arg-names (unused-arguments)
+]
+
+# PEP 257 rules the numpy convention turns off.
+extend-select = [
+    "D107",  # docstring in __init__
+    "D402",  # summary line must not repeat the signature
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 79
+max-doc-length = 72
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-statements = 50
+max-returns = 6
+max-branches = 12
+max-locals = 15
+max-public-methods = 10
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-line-length = 72
+
+[tool.complexipy]
+paths = ["platforms", "tests"]
+max-complexity-allowed = 10

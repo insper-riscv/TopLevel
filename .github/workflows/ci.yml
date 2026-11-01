@@ -1,19 +1,25 @@
 name: ci
 
+# One run per commit: a pull request (a new commit cancels the run of the previous one) or a push to
+# main. The four jobs have fixed names, which a ruleset of the organization can require as checks.
 on:
-  push:
   pull_request:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
-  toplevel:
-    # Needs no hardware and no Quartus license (GHDL is open source).
-    # insper-riscv/Infra's VHDL image has GHDL and uv on PATH.
+  vhdl-syntax:
+    name: vhdl-syntax
     runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    # GHDL, Yosys, SymbiYosys, z3, uv and riscv-tools of insper-riscv/Infra.
     container:
       image: ghcr.io/insper-riscv/ci-vhdl:latest
 
@@ -22,9 +28,35 @@ jobs:
         with:
           submodules: true
 
-      - name: Checkout Core, Memory, Peripherals and Common-Components (the platform wires them)
-        # paths.yaml, platform.yaml and the Makefile name these repositories as
-        # siblings of this checkout.
+      - name: Checkout the repositories that the platform wires, next to this one
+        # paths.yaml, platform.yaml and the Makefile name them as siblings of this checkout.
+        run: |
+          rm -rf ../Core ../Memory ../Peripherals ../Common-Components
+          git clone --depth 1 https://github.com/insper-riscv/Core.git ../Core
+          git clone --depth 1 https://github.com/insper-riscv/Memory.git ../Memory
+          git clone --depth 1 https://github.com/insper-riscv/Peripherals.git ../Peripherals
+          git clone --depth 1 https://github.com/insper-riscv/Common-Components.git ../Common-Components
+
+      - name: Every referenced path exists
+        run: make paths
+
+      - name: VHDL syntax check (GHDL, dependency order)
+        run: make check
+
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/insper-riscv/ci-vhdl:latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Checkout the repositories that the platform wires, next to this one
+        # paths.yaml, platform.yaml and the Makefile name them as siblings of this checkout.
         run: |
           rm -rf ../Core ../Memory ../Peripherals ../Common-Components
           git clone --depth 1 https://github.com/insper-riscv/Core.git ../Core
@@ -35,16 +67,10 @@ jobs:
       - name: Install Python dependencies (cocotb; riscv-tools comes from the image)
         run: uv sync
 
-      - name: Every referenced path exists
-        run: make paths
-
       - name: Every copy of the memory map agrees with platform.yaml
         run: make memory-map
 
-      - name: The simulation top builds (GHDL)
-        run: make check
-
-      - name: Per-entity cocotb tests (clk_gen_3way)
+      - name: Per-entity cocotb tests
         run: make test
 
       - name: Upload waveforms
@@ -54,3 +80,79 @@ jobs:
           name: waveforms
           path: "**/*.ghw"
           if-no-files-found: ignore
+
+  formal:
+    name: formal
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/insper-riscv/ci-vhdl:latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Checkout the repositories that the platform wires, next to this one
+        # paths.yaml, platform.yaml and the Makefile name them as siblings of this checkout.
+        run: |
+          rm -rf ../Core ../Memory ../Peripherals ../Common-Components
+          git clone --depth 1 https://github.com/insper-riscv/Core.git ../Core
+          git clone --depth 1 https://github.com/insper-riscv/Memory.git ../Memory
+          git clone --depth 1 https://github.com/insper-riscv/Peripherals.git ../Peripherals
+          git clone --depth 1 https://github.com/insper-riscv/Common-Components.git ../Common-Components
+
+      - name: Prove every make target named formal*
+        # A repository without proofs passes with a message; the proofs join by adding a formal target.
+        run: |
+          targets=$(sed -n 's/^\(formal[a-z-]*\):.*/\1/p' Makefile)
+          if [ -z "$targets" ]; then
+            echo "This repository has no formal proofs yet."
+          fi
+          status=0
+          for target in $targets; do
+            make "$target" || status=1
+          done
+          exit $status
+
+      - name: Upload the logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: formal-logs
+          path: build/formal/**/*.log
+          if-no-files-found: ignore
+
+  python-static-analysis:
+    name: python-static-analysis
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    # The tools come pinned in the image, with the settings of [tool.ruff] and [tool.complexipy] of pyproject.toml.
+    container:
+      image: ghcr.io/insper-riscv/ci-vhdl:latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: ruff lint
+        run: ruff check .
+
+      - name: ruff format
+        if: ${{ !cancelled() }}
+        run: ruff format . --check
+
+      - name: pycodestyle
+        if: ${{ !cancelled() }}
+        run: pycodestyle --max-line-length=79 --max-doc-length=72 --exclude=Common-Components,build,.venv,sim_build,__pycache__ .
+
+      - name: pydocstyle
+        if: ${{ !cancelled() }}
+        run: pydocstyle --convention=pep257 --match-dir='^(?!(Common-Components|build|\.venv|sim_build|__pycache__)).*' .
+
+      - name: complexipy
+        if: ${{ !cancelled() }}
+        run: complexipy .
+
+      - name: semgrep
+        if: ${{ !cancelled() }}
+        run: semgrep scan --config p/python --error .
