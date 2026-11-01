@@ -279,7 +279,7 @@ begin
 	-- instruction of the PC is there in the same cycle the core samples it, as for the ROMs
 	ICACHE : entity work.icache
 		port map (
-			i_clk => pll_clk_if, i_rst => core_reset,
+			i_clk => pll_clk_if, i_clk_cpu => pll_clk_idexmem, i_rst => core_reset,
 			i_addr => if_addr, i_sel => ic_sel, o_ready => ic_ready, o_data => ic_data,
 			i_invalidate => ic_inval, o_miss => ic_miss,
 			o_d_addr => id_addr, o_d_rden => id_rden, o_d_advance => id_adv, i_d_ready => id_ready,
