@@ -1,0 +1,81 @@
+# The memory map of the SDRAM platform with the FLASH behind the caches: the BOOT_ROM inside the core, the
+# FLASH (1 MB at 0x20000000) and the board's 64 MB SDRAM (the RAM) reached through the instruction and data
+# caches: the source of truth `riscv-tools check-memory-map` checks every hand-written copy against.
+#
+#   uv run riscv-tools --root . check-memory-map --platform platforms/sdram-flash/platform.yaml
+#
+# Paths in `checks` are relative to the root of this repository; `../Core` and
+# `../Memory` are the sibling checkouts (the same layout as RV32IM's submodules).
+# The copies that the project running the tests owns (its config.yaml, the
+# generated rv32_test.h) are not here: its memory section is this platform's
+# config.yaml, extended, and the header is generated from it.
+platform: sdram-flash
+profile: rv32im
+
+regions:
+  - {name: BOOT_ROM, base: 0x00000000, size: 2K,   kind: rom, exec: true}
+  - {name: FLASH,    base: 0x20000000, size: 1M,   kind: rom, exec: true}
+  - {name: RAM,      base: 0x40000000, size: 64M,  kind: ram}   # the SDRAM
+
+# Words at the top of RAM: the contract between the boot ROM, the program and
+# the host (platform/boot_rom.S clears them at every reset).
+reserved:
+  stdout:   {base: 0x43FFFBE0, size: 1K+8}
+  tohost:   {base: 0x43FFFFE8, size: 8}
+  fromhost: {base: 0x43FFFFF0, size: 8}
+
+boot:
+  entry: 0x20000000
+  wait_restart: 0x00000100
+
+peripherals: []
+
+checks:
+  # --- config.yaml ---------------------------------------------------------
+  - {name: config boot_rom_base, file: platforms/internal-mem/config.yaml, yaml: memory.boot_rom_base, expect: BOOT_ROM.base}
+  - {name: config boot_rom_words, file: platforms/internal-mem/config.yaml, yaml: memory.boot_rom_words, expect: BOOT_ROM.words}
+  - {name: config rom_base, file: platforms/sdram-flash/config.yaml, yaml: memory.rom_base, expect: FLASH.base}
+  - {name: config rom_words, file: platforms/sdram-flash/config.yaml, yaml: memory.rom_words, expect: FLASH.words}
+  - {name: config rom_origin, file: platforms/sdram-flash/config.yaml, yaml: memory.rom_origin, expect: FLASH.base}
+  - {name: config ram_base, file: platforms/sdram/config.yaml, yaml: memory.ram_base, expect: RAM.base}
+  - {name: config ram_words, file: platforms/sdram/config.yaml, yaml: memory.ram_words, expect: RAM.words}
+  - {name: config tohost_addr, file: platforms/sdram/config.yaml, yaml: memory.tohost_addr, expect: tohost.base}
+  - {name: config fromhost_addr, file: platforms/sdram/config.yaml, yaml: memory.fromhost_addr, expect: fromhost.base}
+  - {name: config sim boot_rom_addr_width, file: platforms/internal-mem/config.yaml, yaml: sim.parameters.boot_rom_addr_width, expect: clog2(BOOT_ROM.words)}
+
+  # --- linker flags (rv32im-fpga.specs) ------------------------------------
+  - {name: specs __flash, file: platforms/sdram-flash/runtime/rv32im-fpga.specs, pattern: '--defsym=__flash=(\S+)', expect: FLASH.base}
+  - {name: specs __flash_size, file: platforms/sdram-flash/runtime/rv32im-fpga.specs, pattern: '--defsym=__flash_size=(\S+)', expect: FLASH.size}
+  - {name: specs __ram, file: platforms/sdram-flash/runtime/rv32im-fpga.specs, pattern: '--defsym=__ram=(\S+)', expect: RAM.base}
+  # The linker's RAM stops where the reserved words begin.
+  - {name: specs __ram_size, file: platforms/sdram-flash/runtime/rv32im-fpga.specs, pattern: '--defsym=__ram_size=(\S+)', expect: stdout.base - RAM.base}
+  - {name: specs rv32_wait_restart, file: platforms/sdram-flash/runtime/rv32im-fpga.specs, pattern: 'rv32_wait_restart=(\S+?)\s*\}?\s*$', expect: boot.wait_restart}
+
+  # --- boot ROM ------------------------------------------------------------
+  - {name: boot_rom.ld origin, file: platforms/sdram-flash/runtime/boot_rom.ld, pattern: 'boot_rom \(rx\) : ORIGIN = (\S+),', expect: BOOT_ROM.base}
+  - {name: boot_rom.ld length, file: platforms/sdram-flash/runtime/boot_rom.ld, pattern: 'LENGTH = (\w+)\s*$', expect: BOOT_ROM.size}
+  - {name: boot_rom.ld RESET_RESERVED, file: platforms/sdram-flash/runtime/boot_rom.ld, pattern: 'RESET_RESERVED = (\S+);', expect: boot.wait_restart}
+  - {name: boot_rom.S RAM end, file: platforms/sdram-flash/runtime/boot_rom.S, pattern: '^\s*li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*$', expect: RAM.end}
+  - {name: boot_rom.S stdout header, file: platforms/sdram-flash/runtime/boot_rom.S, pattern: 'li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*// stdout header', expect: stdout.base}
+  - {name: boot_rom.S FLASH_BASE, file: platforms/sdram-flash/runtime/boot_rom.S, pattern: 'li\s+t0,\s*(0x[0-9A-Fa-f]+)\s*// FLASH_BASE', expect: boot.entry}
+  - {name: boot_rom.S fromhost offset, file: platforms/sdram-flash/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// fromhost', expect: fromhost.base - RAM.end}
+  - {name: boot_rom.S tohost offset, file: platforms/sdram-flash/runtime/boot_rom.S, pattern: '(-\d+)\(t0\)\s*// tohost', expect: tohost.base - RAM.end}
+
+  # --- runtime and Spike stand-in (shared with the sdram platform) ----------
+  - {name: _exit.c tohost, file: platforms/sdram/runtime/_exit.c, pattern: '\(volatile unsigned int \*\)(0x[0-9A-Fa-f]+)u', expect: tohost.base}
+  - {name: stdio.c STDOUT_BASE, file: platforms/sdram/runtime/stdio.c, pattern: '#define STDOUT_BASE (0x[0-9A-Fa-f]+)u', expect: stdout.base}
+  - {name: spike_exit.S tohost, file: platforms/sdram/runtime/spike_exit.S, pattern: '\.equ tohost, (\S+)', expect: tohost.base}
+  - {name: spike_exit.S fromhost, file: platforms/sdram/runtime/spike_exit.S, pattern: '\.equ fromhost, (\S+)', expect: fromhost.base}
+
+  # --- VHDL of the core ----------------------------------------------------
+  - {name: core BOOT_ROM_SIZE_BYTES, file: ../Core/common/mem_map_consts.vhd, pattern: 'BOOT_ROM_SIZE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: BOOT_ROM.size}
+  - {name: core FLASH_EXT_BASE_BYTES, file: ../Core/common/mem_map_consts.vhd, pattern: 'FLASH_EXT_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: FLASH.base}
+
+  # --- the SDRAM is the RAM: the core decodes it as its external data region -------------
+  - {name: core SDRAM_BASE_BYTES, file: ../Core/common/mem_map_consts.vhd, pattern: 'SDRAM_BASE_BYTES\s*:\s*unsigned\(31 downto 0\)\s*:=\s*to_unsigned\((16#[0-9A-Fa-f]+#)', expect: RAM.base}
+
+  # --- the testbench and the test programs' header (only in RV32IM's tree) -----------------
+  - {name: testbench TOHOST_ADDR, file: platforms/sdram/testbench/test_c_program.py, pattern: '^TOHOST_ADDR = (0x[0-9A-Fa-f]+)', expect: tohost.base}
+  - {name: Tests header RV32_RAM_BASE, file: ../Tests/tools/riscv_build/include-sdram/rv32_platform.h, optional: true, pattern: '#define RV32_RAM_BASE\s+(0x[0-9A-Fa-f]+)', expect: RAM.base}
+  - {name: Tests header RV32_RAM_END, file: ../Tests/tools/riscv_build/include-sdram/rv32_platform.h, optional: true, pattern: '#define RV32_RAM_END\s+(0x[0-9A-Fa-f]+)', expect: RAM.end}
+  - {name: Tests header RV32_STDOUT_BASE, file: ../Tests/tools/riscv_build/include-sdram/rv32_platform.h, optional: true, pattern: '#define RV32_STDOUT_BASE\s+(0x[0-9A-Fa-f]+)', expect: stdout.base}

@@ -1,6 +1,6 @@
 # The SDRAM platform: the board's 64 MB SDRAM (32M x 16, 143 MHz) is THE RAM. It sits at
 # 0x40000000 and holds .data, .bss, the heap, the stack and the words the host shares with the
-# program (mailbox, tohost, fromhost, go flag, stdout). There is no RAM inside the FPGA: that
+# program (tohost, fromhost, stdout). There is no RAM inside the FPGA: that
 # memory (the RAM1PORT IP of the Memory repository) is kept for a future L1 cache.
 #
 # The host reads and writes the SDRAM through the debug port (JTAG); the boot ROM and the FLASH
@@ -14,8 +14,8 @@ toolchain:
 memory:
   ram_base: 0x40000000
   ram_words: 16777216          # 64 MB
-  mailbox_addr: 0x43FFFFFC
-  go_flag_addr: 0x43FFFFF8
+  tohost_addr: 0x43FFFFE8
+  fromhost_addr: 0x43FFFFF0
 
 paths:
   sources:
@@ -66,6 +66,7 @@ sim:
     - ../Core/M/multdiv.vhd
     - ../Core/Zicsr/csr_decode.vhd
     - ../Core/Zicsr/csr_addr_consts.vhd
+    - ../Core/Zicsr/csr_event_consts.vhd
     - ../Core/Zicntr/counter64.vhd
     - ../Core/Zicntr/tick_divider.vhd
     - ../Core/Zicsr/csr_file.vhd
@@ -103,6 +104,7 @@ sim:
   # FENCE.I invalidates the instruction cache of this platform (the generic exists in its top only)
   parameters:
     HAS_ZIFENCEI: true
+    HAS_ZIHPM: true
   test_module: testbench.test_c_program
   python_path:
     - ../TopLevel/platforms/sdram
@@ -125,4 +127,3 @@ quartus:
   # indices are not used and must not name FLASH_MEM.
   rom_mem_instances: [1, 2]
   ram_mem_instance: null
-  mailbox_mem_instance: null

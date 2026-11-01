@@ -27,6 +27,8 @@ entity rv32im_sdram_axi_sim_test is
 	  HAS_ZICSR : boolean := false;
 	  -- Habilita os contadores da extensão Zicntr (implica Zicsr).
 	  HAS_ZICNTR : boolean := false;
+	  -- Contadores de eventos da extensao Zihpm (quatro, indices 3 a 6); exige Zicsr.
+	  HAS_ZIHPM : boolean := false;
 	  -- Zifencei no core (FENCE.I invalida a cache de instrucoes); false mantem o NOP.
 	  HAS_ZIFENCEI : boolean := false;
 	  -- Acesso desalinhado a memoria principal executado em hardware (Zicclsm).
@@ -54,6 +56,15 @@ entity rv32im_sdram_axi_sim_test is
 end entity;
 
 architecture behaviour of rv32im_sdram_axi_sim_test is
+
+	-- Quantidade de contadores de eventos do Zihpm: quatro (indices 3 a 6) com a extensao, nenhum sem ela.
+	function hpm_count(present : boolean) return natural is
+	begin
+		if present then
+			return 4;
+		end if;
+		return 0;
+	end function;
 
 	-- Exceção sinalizada pelo core sem Zicsr (um ciclo em '1'); com Zicsr fica em '0'.
 	signal core_trap       : std_logic;
@@ -151,7 +162,7 @@ begin
     );
 
 	CORE : entity work.core
-		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zicntr => HAS_ZICNTR, has_zifencei => HAS_ZIFENCEI, has_zicclsm => HAS_ZICCLSM, has_dcache => not WRITE_THROUGH)
+		generic map (has_m => true, has_zicsr => HAS_ZICSR, has_zicntr => HAS_ZICNTR, hpm_counters => hpm_count(HAS_ZIHPM), has_zifencei => HAS_ZIFENCEI, has_zicclsm => HAS_ZICCLSM, has_dcache => not WRITE_THROUGH)
 		port map (
 			o_trap       => core_trap,
 			o_retire     => core_retire,

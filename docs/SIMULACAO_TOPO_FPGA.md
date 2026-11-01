@@ -47,13 +47,13 @@ O workflow `sim-fpga.yml` faz o mesmo no runner self-hosted, dentro da imagem `c
 
 ## 4. O que a verificação faz
 
-O módulo de teste (`platforms/internal-mem/testbench/test_c_program.py`) é o mesmo dos dois perfis. Ele observa o barramento de escrita da RAM (`ram_wren`, `ram_en`, `ram_addr`, `ram_wdata`, `ram_byteena`), procura a escrita de PASS ou FAIL no mailbox e, em testes de memória, compara o conteúdo reconstruído da RAM com o golden. O perfil do topo de hardware só muda o que ele dirige, por variáveis de ambiente (`sim.env`): nome do clock e do reset, período, clock de amostragem (`pll_clk_idexmem`, o da RAM) e limite de ciclos.
+O módulo de teste (`platforms/internal-mem/testbench/test_c_program.py`) é o mesmo dos dois perfis. Ele observa o barramento de escrita da RAM (`ram_wren`, `ram_en`, `ram_addr`, `ram_wdata`, `ram_byteena`), procura a escrita no `tohost` (1 é PASS, `(código << 1) | 1` é FAIL) e, em testes de memória, compara o conteúdo reconstruído da RAM com o golden. O perfil do topo de hardware só muda o que ele dirige, por variáveis de ambiente (`sim.env`): nome do clock e do reset, período, clock de amostragem (`pll_clk_idexmem`, o da RAM) e limite de ciclos.
 
 ## 5. O que continua só no hardware
 
 | Item | Por quê |
 | :--- | :--- |
-| Escrita de FLASH por JTAG (In-System Memory Content Editor) e a go flag vinda do host | Só existem na placa; na simulação a imagem é carregada do arquivo |
+| Escrita de FLASH por JTAG (In-System Memory Content Editor) e o `fromhost` vindo do host | Só existem na placa; na simulação a imagem é carregada do arquivo |
 | Temporização e síntese | A simulação é funcional: não vê frequência máxima, violação de setup e hold nem otimização |
 | Estado inicial real da FPGA | A simulação inicializa a memória e os registradores de forma previsível |
 | Conteúdo da RAM lido de dentro da IP | O GHDL só expõe sinais, então o conteúdo é reconstruído do barramento, não lido da memória |

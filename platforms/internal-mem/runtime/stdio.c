@@ -2,8 +2,8 @@
  *
  * The core has no output device, so output goes to a buffer in RAM that
  * the host reads over JTAG once the test is over: a fixed region at the
- * top of RAM, just below the words the boot ROM clears (mailbox, go flag,
- * tohost, fromhost). rv32im-fpga.specs leaves it out of RAM's size, so
+ * top of RAM, just below the words the boot ROM clears (tohost,
+ * fromhost). rv32im-fpga.specs leaves it out of RAM's size, so
  * the stack never reaches it. The boot ROM clears the header on every
  * start.
  *

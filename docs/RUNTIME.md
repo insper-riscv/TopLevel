@@ -37,7 +37,7 @@ crt0-hosted%O%s
 | Parte | O que faz |
 | :--- | :--- |
 | `__flash`, `__flash_size` | Onde o `picolibc.ld` põe `.init`, `.text` e `.rodata` (a FLASH, de `0x800`, 30 KB) |
-| `__ram`, `__ram_size` | Onde ele põe `.data`, `.bss`, o heap e a pilha (a RAM, de `0x8000`). Os 1056 bytes do topo ficam de fora: 24 do mailbox e dos HTIF, 1032 do `stdout` (seção 5) |
+| `__ram`, `__ram_size` | Onde ele põe `.data`, `.bss`, o heap e a pilha (a RAM, de `0x8000`). Os 1056 bytes do topo ficam de fora: 24 do `tohost`, do `fromhost` e de 8 livres, 1032 do `stdout` (seção 5) |
 | `rv32_wait_restart=0x100` | O endereço fixo da rotina da BOOT_ROM em que todo teste termina. Sai do link quando se compila com `-DRV32_SPIKE` (seção 6) |
 | `crt0-hosted` | O startup da picolibc: ajusta `sp` e `gp`, copia `.data` da FLASH, zera `.bss`, prepara o TLS, roda construtores, chama `main` e chama `exit` com o que `main` retornou |
 
@@ -72,7 +72,7 @@ Em `platforms/internal-mem/runtime/`:
 | Arquivo | Papel |
 | :--- | :--- |
 | `boot_rom.S`, `boot_rom.ld` | A BOOT_ROM, gravada uma vez: limpa as palavras compartilhadas, pula para `0x800` e guarda o `rv32_wait_restart` em `0x100` (ver [CRT0_BOOT_REFERENCE.md](CRT0_BOOT_REFERENCE.md)) |
-| `_exit.c` | O `_exit` em que o `crt0` termina: código 0 é PASS (mailbox `1`), qualquer outro é FAIL (mailbox `2`); depois salta para o `rv32_wait_restart` |
+| `_exit.c` | O `_exit` em que o `crt0` termina: código 0 é PASS (`tohost` `1`), qualquer outro é FAIL (`tohost` `(código << 1) | 1`); depois salta para o `rv32_wait_restart` |
 | `stdio.c` | A função de escrita do `stdout` (seção 5) |
 | `spike_exit.S` | O substituto do `rv32_wait_restart` para o ELF do Spike (seção 6) |
 
@@ -94,7 +94,7 @@ O `printf` completo (com suporte a `double`) custa cerca de 12 KB dos 30 KB da F
 
 ## 6. O Spike
 
-O programa de um teste termina no `rv32_wait_restart`, que no hardware é código da BOOT_ROM, num endereço fixo, e a imagem do teste não tem nada lá. Para o Spike, o ELF é montado à parte, com `-DRV32_SPIKE` (que tira o endereço fixo do link) e com `platforms/internal-mem/runtime/spike_exit.S`, que define o `rv32_wait_restart` como código comum (o mailbox traduzido para HTIF, onde o Spike para). `tohost` e `fromhost` são símbolos absolutos nas palavras reservadas do topo da RAM, então o arquivo não ocupa espaço e todo endereço do ELF do Spike, e portanto de um golden, é o da imagem que o hardware carrega.
+O programa de um teste termina no `rv32_wait_restart`, que no hardware é código da BOOT_ROM, num endereço fixo, e a imagem do teste não tem nada lá. Para o Spike, o ELF é montado à parte, com `-DRV32_SPIKE` (que tira o endereço fixo do link) e com `platforms/internal-mem/runtime/spike_exit.S`, que define o `rv32_wait_restart` como código comum (uma espera, já que o teste escreveu o `tohost`, onde o Spike para). `tohost` e `fromhost` são símbolos absolutos nas palavras reservadas do topo da RAM, então o arquivo não ocupa espaço e todo endereço do ELF do Spike, e portanto de um golden, é o da imagem que o hardware carrega.
 
 ## 7. Limites conhecidos
 

@@ -1,11 +1,11 @@
 """cocotb testbench of the SDRAM platform's 'sim' test suite.
 
 Clocks rv32im_sdram_sim_test (the core clock and the SDRAM clock), releases reset and watches the
-core's data port to the SDRAM for a write to the PASS/FAIL mailbox word (the convention of
-rv32_test.h and of memory.mailbox_addr in config.yaml) until the test signals a result or the
+core's data port to the SDRAM for a write to the low word of tohost (the HTIF convention of
+rv32_test.h and of memory.tohost_addr in config.yaml) until the test signals a result or the
 timeout is hit.
 
-For a "memory"-kind test (GOLDEN_PATH set, see sim_runner.run_test) a mailbox PASS also compares
+For a "memory"-kind test (GOLDEN_PATH set, see sim_runner.run_test) a tohost PASS also compares
 the golden's bytes with the content the SDRAM chip model holds. The golden is read out of the
 model itself (its word debug port), not rebuilt from the writes seen on the bus, so a word that
 never reached the chip, or reached the wrong address, is caught. The SDRAM is the RAM of this
@@ -36,9 +36,9 @@ from riscv_tools.mem_validator import compare_bytes, load_golden
 
 STDOUT_ADDR = 0x43FFFBE0
 STDOUT_SIZE = 1024
-MAILBOX_ADDR = 0x43FFFFFC
-MAILBOX_PASS = 1
-MAILBOX_FAIL = 2
+TOHOST_ADDR = 0x43FFFFE8
+# tohost low word: 1 is a pass, (code << 1) | 1 is a failure with that code.
+TOHOST_PASS = 1
 
 SDRAM_BASE = 0x40000000
 RAM_BASE = int(os.environ.get("RAM_BASE", str(SDRAM_BASE)))
@@ -233,15 +233,16 @@ async def test_program(dut) -> None:
             # an undefined address or data: nothing meaningful to look at
             continue
 
-        if address // 4 != MAILBOX_ADDR // 4 or not byteena & 1:
+        if address // 4 != TOHOST_ADDR // 4 or byteena != 0xF or not wdata & 1:
             continue
 
-        if wdata == MAILBOX_PASS:
+        if wdata == TOHOST_PASS:
             dut._log.info("PASS")
             dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
             dut._log.info(f"CORE CYCLES {core_cycles} INSTRUCTIONS RETIRED {retired}")
             console_stop[0] = True
             await console
+            dut._log.info(f"the console read {bytes(uart_bytes)!r}")
             await check_uart_stream(dut, uart_bytes)
             if GOLDEN_PATH is not None:
                 golden = load_golden(GOLDEN_PATH)
@@ -250,12 +251,11 @@ async def test_program(dut) -> None:
                     actual, golden, actual_label=test_name, golden_label=GOLDEN_PATH.name
                 ):
                     raise AssertionError(
-                        f"{test_name}: mailbox PASS but the SDRAM content doesn't match "
+                        f"{test_name}: tohost PASS but the SDRAM content doesn't match "
                         f"{GOLDEN_PATH.name}: see the diff above"
                     )
             return
-        if wdata == MAILBOX_FAIL:
-            raise AssertionError("test signalled FAIL via RV32_FAIL()")
+        raise AssertionError(f"test signalled FAIL via RV32_FAIL(), code {wdata >> 1}")
 
     console_stop[0] = True
     await console

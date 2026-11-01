@@ -13,7 +13,7 @@ entre o core e a SDRAM.
 
 O host (o PC) alcança a SDRAM por uma **porta de debug JTAG**, um segundo mestre do controlador.
 Ela lê e escreve qualquer palavra com o core rodando, parado ou travado, e é o que o dump, o
-mailbox, o `go flag` e o `zero-ram` usam no lugar do editor de memória do Quartus, que só
+`tohost`, o `fromhost` e o `zero-ram` usam no lugar do editor de memória do Quartus, que só
 enxerga memória interna.
 
 ## 2. Arquitetura
@@ -63,8 +63,6 @@ As palavras do host ficam no topo da RAM, fora do espaço que o linker dá ao pr
 | :--- | :--- |
 | `stdout`: tamanho, truncado, 1 KB de dados | `0x43FFFBE0` |
 | `tohost`, `fromhost` | `0x43FFFFE8`, `0x43FFFFF0` |
-| `go flag` | `0x43FFFFF8` |
-| mailbox (1 = PASS, 2 = FAIL) | `0x43FFFFFC` |
 
 O linker coloca `.data`, `.bss` e o heap a partir de `0x40000000` e a pilha no topo, com
 $64\,\text{MB} - 1056$ bytes de espaço (1056 bytes são das palavras do host). A pilha cresce para
@@ -166,8 +164,8 @@ de memória da FPGA, como na plataforma `internal-mem`.
 
 | Operação | Como |
 | :--- | :--- |
-| iniciar um teste | zera o mailbox, grava a FLASH pelo editor de memória (instâncias 1 e 2), aciona o `go flag` |
-| esperar o teste | lê o mailbox em intervalos até 1 (PASS) ou 2 (FAIL) |
+| iniciar um teste | zera o `tohost`, grava a FLASH pelo editor de memória (instâncias 1 e 2), escreve o `fromhost` |
+| esperar o teste | lê o `tohost` em intervalos até o bit 0 acender (1 é PASS, `(código << 1) | 1` é FAIL) |
 | comparar o golden | lê só as palavras que o golden nomeia e grava um `.mif` esparso, que o validador lê como qualquer dump |
 | `zero-ram` | preenche os 64 MB com zero pela placa: 2,4 s |
 | `dump-ram` | `--start-word N --words M` lê um intervalo |
@@ -180,9 +178,9 @@ instância de RAM.
 
 | Peça | O que faz nesta plataforma |
 | :--- | :--- |
-| boot ROM | limpa as palavras do host no topo da SDRAM, salta para a FLASH em `0x800`, e fica parada em `rv32_wait_restart` (endereço fixo `0x100`) até o host acionar o `go flag` |
+| boot ROM | limpa as palavras do host no topo da SDRAM, salta para a FLASH em `0x800`, e fica parada em `rv32_wait_restart` (endereço fixo `0x100`) até o host escrever o `fromhost` |
 | `crt0` | põe `sp` e `gp`, copia `.data` da FLASH para a SDRAM, zera `.bss`, chama `main` |
-| `_exit` | escreve 1 (PASS) ou 2 (FAIL) no mailbox e volta para a boot ROM |
+| `_exit` | escreve 1 (PASS) ou `(código << 1) | 1` (FAIL) no `tohost` e volta para a boot ROM |
 | `stdout` | buffer linear de 1 KB no topo da SDRAM, lido pelo host |
 
 A boot ROM é gravada uma única vez no bitstream. O comando de execução não a recompila: a imagem do
@@ -199,7 +197,7 @@ O topo de simulação tem o core, a BOOT_ROM e a FLASH como arrays de VHDL e a S
 chip, que **falha a simulação** em qualquer violação de timing, de ordem de comandos ou de intervalo
 de refresh. O clock do controlador (7 ns) não tem relação fixa com o do core.
 
-O testbench acha o mailbox observando as escritas que terminam na porta de dado da SDRAM e, num
+O testbench acha o `tohost` observando as escritas que terminam na porta de dado da SDRAM e, num
 PASS, compara o golden com o **conteúdo do modelo do chip**, lido pela porta de leitura direta do
 modelo. O golden não é reconstruído a partir das escritas vistas no barramento, então uma palavra
 que nunca chegou ao chip, ou chegou ao endereço errado, é pega.
@@ -223,10 +221,10 @@ Placa:
 3. regravar o bitstream com a boot ROM: `riscv-tools --config <config> program <imagem>.mif`;
 4. rodar a suíte: `riscv-tools --config <config> run --skip-reconfigure`.
 
-Depurar um programa que não termina: carregue a FLASH e acione o `go flag` (o `run` faz isso), e leia a
+Depurar um programa que não termina: carregue a FLASH e escreva o `fromhost` (o `run` faz isso), e leia a
 memória pela porta (`dump-ram --start-word N --words M`). Um programa que incrementa um contador na
 SDRAM sem nunca sinalizar, lido três vezes com 1 s de intervalo, devolveu 5 738 735, 10 064 582 e
-14 386 268, com o mailbox em 0.
+14 386 268, com o `tohost` em 0.
 
 Zerar a RAM: `riscv-tools --config <config> zero-ram`. Depois de escrever o primeiro, um do meio e o
 último endereço, o `zero-ram` deixou os três em 0.

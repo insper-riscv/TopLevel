@@ -21,22 +21,21 @@ concordar de antemão sobre onde tudo mora.
    FLASH (as duas cópias físicas, `FLASH`/`FLASH_MEM`, ver
    `quartus.rom_mem_instances`) via JTAG (In-System Memory Content
    Editor), sem recompilar nem reprogramar a FPGA; depois escreve `1`
-   em `go_flag_addr`.
+   em `fromhost_addr`.
 3. **O core, do lado de dentro**: entre um teste e outro, o core fica
    parado em `rv32_wait_restart` (endereço fixo `0x100` em BOOT_ROM),
-   num loop que só faz `lw` de `go_flag_addr` até ler não-zero.
-4. Ao ver o go-flag setado, `rv32_wait_restart` salta pra `_reset`
-   (endereço fixo `0x0`). Antes de esperar, ele traduziu o mailbox que o
-   teste anterior escreveu para o valor HTIF de `tohost` (convenção
-   Spike, sem efeito em hardware real).
-5. `_reset` zera mailbox, go-flag, `tohost`, `fromhost` e o cabeçalho do
+   num loop que só faz `lw` de `fromhost_addr` até ler não-zero.
+4. Ao ver `fromhost` diferente de zero, `rv32_wait_restart` salta pra
+   `_reset` (endereço fixo `0x0`). O teste anterior já escreveu o resultado
+   em `tohost` antes de chegar lá.
+5. `_reset` zera `tohost`, `fromhost` e o cabeçalho do
    `stdout` (pra não vazar o resultado nem a saída do teste anterior) e
    salta pra `FLASH_BASE` (`0x00000800`).
 6. Em `0x800` está o `_start` do `crt0` da picolibc, dentro da imagem do
    teste: ajusta `sp` e `gp`, copia `.data` de FLASH pra RAM, zera
    `.bss`, prepara o TLS e chama `main`, ver
    [CRT0_BOOT_REFERENCE.md](CRT0_BOOT_REFERENCE.md).
-7. Ao terminar, o teste escreve o mailbox (`RV32_PASS()`/`RV32_FAIL()`
+7. Ao terminar, o teste escreve o `tohost` (`RV32_PASS()`/`RV32_FAIL(código)`
    em `rv32_test.h`, ou o retorno de `main` via `_exit`) e chama
    `rv32_wait_restart`, voltando ao passo 3.
 
@@ -77,7 +76,7 @@ mínimo é:
 | :--- | :--- | :--- |
 | Entrada do programa | `0x800`, o `_start` da picolibc (o `picolibc.ld` põe `.init` no começo da FLASH) | BOOT_ROM salta pra lá |
 | `rv32_wait_restart` | `0x100` | o programa salta pra lá ao terminar |
-| Palavras do topo da RAM | mailbox `0x2FFFC`, go flag `0x2FFF8`, `fromhost` `0x2FFF0`, `tohost` `0x2FFE8`, cabeçalho do `stdout` `0x2FBE0` | BOOT_ROM as zera, o programa e o host as usam |
+| Palavras do topo da RAM | `fromhost` `0x2FFF0`, `tohost` `0x2FFE8`, cabeçalho do `stdout` `0x2FBE0` | BOOT_ROM as zera, o programa e o host as usam |
 
 Tudo o mais (onde ficam `.data`, `.bss`, heap e pilha, o tamanho de cada
 seção) é decidido no link de cada teste pelo linker script da toolchain, a

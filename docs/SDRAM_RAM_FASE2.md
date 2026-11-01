@@ -114,12 +114,12 @@ por dois flip-flops; o byte e a bandeira de envio ficam parados até o próximo 
 O `stdio` do programa escreve cada caractere no buffer de `stdout` na SDRAM, como na fase 1, e
 também o entrega à UART pela regra da seção 3.3. O build para o Spike não tem a UART e pula essa
 parte. O código de saída **não** vai pela UART: um byte de controle no meio do fluxo corromperia a
-saída, e o resultado já chega ao host pelo mailbox, que a porta de debug lê mesmo com o programa
+saída, e o resultado já chega ao host pelo `tohost`, que a porta de debug lê mesmo com o programa
 travado.
 
 | Palavra do host | Onde está |
 | :--- | :--- |
-| `stdout`, `tohost`, `fromhost`, `go flag`, mailbox | na SDRAM, como na fase 1 |
+| `stdout`, `tohost`, `fromhost` | na SDRAM, como na fase 1 |
 | UART | janela `0xC0000000`, fora da RAM |
 
 A fila de transmissão não é esvaziada quando um programa novo começa; ela só é zerada no reset. O
@@ -154,7 +154,7 @@ riscv-tools --config <config> console --seconds 10
 
 Sem `--seconds` o console escuta até Ctrl-C. `--send TEXTO` entrega bytes ao programa no início.
 Como um programa só imprime na UART depois que um host a varreu, inicie o console antes de carregar
-o programa, ou antes de acionar o `go flag` de um que já está carregado.
+o programa, ou antes de escrever o `fromhost` de um que já está carregado.
 
 Exemplo medido na placa, com o `stdout-printf`: o console foi ligado por 4 s, o teste foi rodado com
 `run --skip-reconfigure --manifest <só o teste>`, e um segundo console devolveu
@@ -202,7 +202,7 @@ tem a mesma restrição de atraso máximo e mínimo da porta de debug.
 - Uma resposta é mostrada duas varreduras depois do comando, então a saída de um programa que
   termina aparece com essa latência: o console varre algumas vezes depois do último byte.
 - Só existe uma UART. Os ids 1 a 3 estão reservados e sem periférico.
-- O mailbox, o `tohost` e o `go flag` seguem em memória; nada migrou para a UART.
+- O `tohost` e o `fromhost` seguem em memória; nada migrou para a UART.
 - Uma cache L1 de dado entre o core e o interconnect deve deixar passar sem cache todo acesso com o
   bit 31 em 1: ler um registrador de periférico tem efeito colateral.
 

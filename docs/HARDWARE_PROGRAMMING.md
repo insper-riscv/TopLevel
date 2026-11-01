@@ -121,7 +121,7 @@ chamadas `subprocess.run()` separadas. Confirmado: `uv run riscv-tools
 ## Um bug relacionado, mas diferente: `jtagconfig` OK e mesmo assim trava
 
 Se `jtagconfig` mostra a placa saudável mas leituras/escritas via
-In-System Memory Content Editor (mailbox, ROM/RAM) continuam travando ou
+In-System Memory Content Editor (`tohost`, ROM/RAM) continuam travando ou
 nunca respondendo, e só power-cycle físico resolve (reprogramar sozinho
 não): não é este bug. Ver
 [bugs/PLL_LOCK_LOSS_BUG.md](bugs/PLL_LOCK_LOSS_BUG.md): o reset do PLL
@@ -139,7 +139,7 @@ fato pela primeira vez nesta sessão:
    sem zero-padding (`[format %x $VALUE]` em vez de `[format %08x $VALUE]`),
    o que fazia o `write_content_to_memory` do Quartus rejeitar a escrita
    ("Data specified in the string does not match the number of bits...").
-   Afeta `mailbox.pulse_go_flag` (o pulso de restart de cada teste).
+   Afeta `mailbox.pulse_fromhost` (a escrita de restart de cada teste).
 
 2. **`mem_validator/core.py`** interpretava o conteúdo do `.mif` de dump de
    RAM sempre como hexadecimal, mas `save_content_from_memory_to_file` do

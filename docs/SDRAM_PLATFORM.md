@@ -4,7 +4,7 @@
 
 A plataforma `sdram` usa os 64 MB de SDRAM da DE0-CV (32M x 16, 143 MHz) como **a RAM** do
 core. Não existe RAM dentro da FPGA: `.data`, `.bss`, o heap, a pilha e as palavras que o host
-compartilha com o programa (mailbox, `tohost`, `fromhost`, `go flag` e `stdout`) estão na
+compartilha com o programa (`tohost`, `fromhost` e `stdout`) estão na
 SDRAM. A BOOT_ROM e a FLASH continuam dentro da FPGA, porque o core busca instruções nelas.
 
 A memória que a `internal-mem` usa como RAM (a IP `RAM1PORT`) fica reservada no repositório
@@ -27,8 +27,6 @@ As palavras do host ficam no topo da RAM:
 | :--- | :--- |
 | `stdout` (1 KB mais 8 bytes) | `0x43FFFBE0` |
 | `tohost` e `fromhost` | `0x43FFFFE8` e `0x43FFFFF0` |
-| `go flag` | `0x43FFFFF8` |
-| mailbox | `0x43FFFFFC` |
 
 O `platform.yaml` é a fonte de verdade, e o `check-memory-map` confere contra ele cada cópia
 desses números: a configuração, o runtime, o VHDL do core, o testbench e o header dos programas.

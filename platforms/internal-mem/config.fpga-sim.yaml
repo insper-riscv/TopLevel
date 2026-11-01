@@ -88,6 +88,7 @@ sim:
     - ../Core/M/multdiv.vhd
     - ../Core/Zicsr/csr_decode.vhd
     - ../Core/Zicsr/csr_addr_consts.vhd
+    - ../Core/Zicsr/csr_event_consts.vhd
     - ../Core/Zicntr/counter64.vhd
     - ../Core/Zicntr/tick_divider.vhd
     - ../Core/Zicsr/csr_file.vhd

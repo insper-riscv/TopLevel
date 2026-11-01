@@ -124,7 +124,7 @@ begin
 	LEDR(3) <= not core_reset;   -- '1' core fora de reset, rodando
 
 	CORE : entity work.core
-		generic map (has_m => true, has_zicsr => true)
+		generic map (has_m => true, has_zicsr => true, has_zicntr => true)
 		port map (
 			i_clk          => pll_clk_idexmem,
 			i_rst        => core_reset,
@@ -234,7 +234,7 @@ begin
 	-- o porque (ENABLE_RUNTIME_MOD nao compila em DUAL_PORT nesta
 	-- edicao do Quartus). Instanciada DEPOIS de RAM de proposito, para
 	-- nao mudar o indice de instancia JTAG que RAM ja' tem (2) -- ver
-	-- config.yaml quartus.ram_mem_instance/mailbox_mem_instance.
+	-- config.yaml quartus.ram_mem_instance.
 	FLASH_MEM : entity work.flash_mem1port
     port map (
       address => flash_addr2(14 downto 2),
