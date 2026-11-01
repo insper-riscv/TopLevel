@@ -32,7 +32,7 @@ architecture behaviour of core_fpga_test is
 
 	-- RAM's In-System Memory Content Editor (JTAG) addresses it as a
 	-- 0-based array relative to memory.ram_base (see
-	-- riscv_tools.mailbox.word_offset's own docstring: "relative=True
+	-- riscv_tools.htif.word_offset's own docstring: "relative=True
 	-- ... What mem_edit's JTAG primitives expect"), NOT the CPU's raw
 	-- absolute address. Every previous memory-map round got this for
 	-- free by accident (ram_base was always chosen as a power-of-two
@@ -40,8 +40,8 @@ architecture behaviour of core_fpga_test is
 	-- address to that width happened to equal subtracting ram_base) --
 	-- broke silently the first time that stopped being true (ram_base
 	-- = 0x11000 in that round, not aligned to RAM's 16-bit width), confirmed on
-	-- real hardware: a debug LED wired directly to the mailbox write
-	-- (ram_addr = mailbox_addr) lit up correctly, proving the CORE
+	-- real hardware: a debug LED wired directly to the tohost write
+	-- (ram_addr = tohost_addr) lit up correctly, proving the CORE
 	-- writes the right byte address -- but JTAG reads (computed
 	-- RAM-relative, per mem_edit's own convention) always came back
 	-- 0, since RAM's OWN address port was indexing by the untranslated
