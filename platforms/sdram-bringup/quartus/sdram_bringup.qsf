@@ -60,6 +60,7 @@ set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name VERILOG_FILE ../pll/sdram_pll.v
 set_global_assignment -name VHDL_FILE ../rtl/sdram_bringup_top.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_pkg.vhd
+set_global_assignment -name VHDL_FILE ../Common-Components/src/synchronizer.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_ctrl.vhd
 set_global_assignment -name VHDL_FILE ../../../../Memory/external/sdram/sdram_bist.vhd
 

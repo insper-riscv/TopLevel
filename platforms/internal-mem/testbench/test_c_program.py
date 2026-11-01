@@ -1,18 +1,18 @@
 """cocotb testbench for the 'sim' test suite.
 
 Clocks rv32i3stage_core_sim_test, releases reset, and watches the
-RAM write bus for a write to the PASS/FAIL mailbox word (same
-convention as rv32_test.h / config.yaml's memory.mailbox_addr) until
+RAM write bus for a write to the low word of tohost (same
+HTIF convention as rv32_test.h / config.yaml's memory.tohost_addr) until
 the test signals a result or a timeout is hit. For a "memory"-kind
 test (GOLDEN_PATH set — see sim_runner.run_test), also reconstructs
 RAM's final byte content from every write seen on that same bus and
-compares it against golden.json on a mailbox PASS, the same
+compares it against golden.json on a tohost PASS, the same
 RAM-vs-golden check orchestrator.run_one does for real hardware from
-a JTAG dump. Before this, a mailbox PASS alone was reported as a sim
+a JTAG dump. Before this, a tohost PASS alone was reported as a sim
 PASS regardless of whether the test's actual computed value was
 right — e.g. a wrong sum could reach RV32_PASS() and only get caught
 once the same test ran for real, sometimes much later. Correctness of
-the mailbox write itself still ONLY means "the program reached
+the tohost write itself still ONLY means "the program reached
 RV32_PASS()/RV32_FAIL()" — it says nothing about whether the values it
 computed along the way were correct, which is exactly what the golden
 compare below is for.
@@ -32,7 +32,7 @@ how the real hardware path only ever observes memory through a bus
 Unlike sim_runner's own ROM_HEX/TEST_NAME convention, this project's
 ROM_simulation entity loads the program image itself, via a VHDL
 generic (config.yaml's sim.parameters: ROM_FILE) read by a file-open
-process inside ROM_simulation.vhd at elaboration — so there's no
+process inside rom_simulation.vhd at elaboration — so there's no
 Python-side ROM poking here at all.
 
 The same module drives the hardware top (core_fpga_test, see
@@ -51,29 +51,27 @@ from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer, with_ti
 from riscv_tools.mailbox import word_offset
 from riscv_tools.mem_validator import compare_bytes, load_golden
 
-# Must stay in sync with config.yaml's memory.mailbox_addr and
-# boot_rom.S's own hardcoded mailbox li/sw (the mailbox write itself
-# still comes from the TEST's own RV32_PASS()/RV32_FAIL(), compiled
-# into FLASH — boot_rom.S only CLEARS it on _reset) — same duplication
-# crt0.S used to have, not sourced from config.yaml here since
-# ROM_simulation already takes its program image via a VHDL generic,
-# not env/argv (see module docstring).
+# Must stay in sync with config.yaml's memory.tohost_addr and boot_rom.S's
+# own hardcoded tohost clear (the tohost write itself still comes from the
+# TEST's own RV32_PASS()/RV32_FAIL(), compiled into FLASH; boot_rom.S only
+# CLEARS it on _reset). Not sourced from config.yaml here since
+# ROM_simulation already takes its program image via a VHDL generic, not
+# env/argv (see module docstring).
 #
-# dut.ram_addr below is the raw top-level bus (rv32im_pipeline_core's
-# own ram_addr output, i.e. exmem_alu_out) — an ABSOLUTE byte address,
-# not RAM-relative, unlike the real-hardware JTAG path (mailbox.
-# word_offset()'s default), which addresses RAM through the In-System
-# Memory Editor's own 0-based internal word index. relative=False picks
-# the bus-snoop convention instead — see word_offset's own docstring.
-MAILBOX_ADDR = 0x0002FFFC
-MAILBOX_WORD_OFFSET = word_offset(0, MAILBOX_ADDR, relative=False)
-MAILBOX_PASS = 1
-MAILBOX_FAIL = 2
+# dut.ram_addr below is the raw top-level bus (rv32im_pipeline_core's own
+# ram_addr output, i.e. exmem_alu_out), an ABSOLUTE byte address, not
+# RAM-relative, unlike the real-hardware JTAG path (mailbox.word_offset()'s
+# default). relative=False picks the bus-snoop convention instead, see
+# word_offset's own docstring.
+TOHOST_ADDR = 0x0002FFE8
+TOHOST_WORD_OFFSET = word_offset(0, TOHOST_ADDR, relative=False)
+# tohost low word: 1 is a pass, (code << 1) | 1 is a failure with that code.
+TOHOST_PASS = 1
 
 # RAM_BASE/GOLDEN_PATH come from sim_runner.run_test's extra_env, not
-# hardcoded like MAILBOX_ADDR above: GOLDEN_PATH is inherently
+# hardcoded like TOHOST_ADDR above: GOLDEN_PATH is inherently
 # per-test (a "unit"-kind test has none — see run_suite), and
-# RAM_BASE, unlike the mailbox address, is exactly the kind of number
+# RAM_BASE, unlike the tohost address, is exactly the kind of number
 # that already caused a real, silent bug once when hand-duplicated
 # instead of threaded through from config.yaml (see the RAM-addressing
 # fix in core_fpga_test.vhd / Tests/docs/MEMORY_ARCHITECTURE.md) — not
@@ -194,6 +192,17 @@ async def exchange_uart_errors(uart_rx, uart_tx) -> bytes:
     received.extend(await burst_capture)
     return bytes(received)
 
+def retired_now(dut) -> int:
+    """1 when an instruction retires on this clock edge, 0 otherwise.
+
+    The top exposes the retirement pulse of the core (valid in EX, pipeline advancing, no exception).
+    """
+    try:
+        return int(dut.core_retire.value == 1)
+    except (AttributeError, ValueError):
+        return 0
+
+
 @cocotb.test()
 async def test_program(dut) -> None:
     test_name = os.environ.get("TEST_NAME", "?")
@@ -203,11 +212,11 @@ async def test_program(dut) -> None:
     reset = getattr(dut, SIM_RESET)
     sample_clock = getattr(dut, SIM_SAMPLE_CLOCK)
     cocotb.start_soon(Clock(clock, SIM_CLOCK_PERIOD_NS, unit="ns").start())
+    for extra_name, extra_period in EXTRA_CLOCKS:
+        cocotb.start_soon(Clock(getattr(dut, extra_name), extra_period, unit="ns").start())
     uart_capture_task = None
     uart_drive_task = None
     uart_expected = None
-    for extra_name, extra_period in EXTRA_CLOCKS:
-        cocotb.start_soon(Clock(getattr(dut, extra_name), extra_period, unit="ns").start())
 
     if test_name == "uart-tx":
         uart_expected = UART_TX_EXPECTED
@@ -235,12 +244,13 @@ async def test_program(dut) -> None:
                 receive_uart_message(dut.UART_TX, len(uart_expected))
             )
     cycles_used = 0
+    retired = 0
     # {RAM-relative byte address: byte value} — updated on every RAM
     # write seen on the bus, honoring ram_byteena the same way
-    # RAM_simulation.vhd itself does (mask bit i gates byte lane i of
+    # ram_simulation.vhd itself does (mask bit i gates byte lane i of
     # the 32-bit word at the write's own word-aligned address), so
     # this ends up an exact reconstruction of whatever RAM_simulation
-    # actually stored — not just a record of the mailbox/results
+    # actually stored — not just a record of the tohost/results
     # writes a test happens to make.
     ram_bytes: dict[int, int] = {}
 
@@ -254,6 +264,7 @@ async def test_program(dut) -> None:
     for _ in range(TIMEOUT_CYCLES):
         await RisingEdge(sample_clock)
         cycles_used += 1
+        retired += retired_now(dut)
 
         if dut.ram_wren.value != 1 or dut.ram_en.value != 1:
             continue
@@ -288,13 +299,13 @@ async def test_program(dut) -> None:
                     ram_bytes[word_base + i - RAM_BASE] = (wdata >> (8 * i)) & 0xFF
 
         word_offset = addr // 4
-        if word_offset != MAILBOX_WORD_OFFSET:
+        if word_offset != TOHOST_WORD_OFFSET:
             continue
-        if wdata is None:
+        if wdata is None or not wdata & 1 or byteena != 0xF:
             continue
 
-        mailbox = wdata
-        if mailbox == MAILBOX_PASS:
+        tohost = wdata
+        if tohost == TOHOST_PASS:
             if uart_drive_task is not None:
                 await with_timeout(uart_drive_task, 1, "ms")
 
@@ -310,18 +321,20 @@ async def test_program(dut) -> None:
                 dut._log.info(f"UART TX recebido: {received!r}")
             dut._log.info("PASS")
             dut._log.info(f"CLOCK CYCLES TAKEN {cycles_used}")
+            dut._log.info(f"CORE CYCLES {cycles_used} INSTRUCTIONS RETIRED {retired}")
             if GOLDEN_PATH is not None:
                 golden = load_golden(GOLDEN_PATH)
                 if not compare_bytes(
                     ram_bytes, golden, actual_label=test_name, golden_label=GOLDEN_PATH.name
                 ):
                     raise AssertionError(
-                        f"{test_name}: mailbox PASS but RAM content doesn't match "
+                        f"{test_name}: tohost PASS but RAM content doesn't match "
                         f"{GOLDEN_PATH.name} — see the diff above"
                     )
             return
-        if mailbox == MAILBOX_FAIL:
-            raise AssertionError("test signalled FAIL via RV32_FAIL()")
+        raise AssertionError(
+            f"test signalled FAIL via RV32_FAIL(), code {tohost >> 1}"
+        )
 
     raise AssertionError(
         f"timed out after {TIMEOUT_CYCLES} cycles without a PASS/FAIL signal"

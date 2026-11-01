@@ -110,7 +110,7 @@ end entity mux_2x1;
 
 ## 4. Projeto para Reuso e Proibição de Duplicação
 
-O projeto segue a prática de *Design for Reuse* descrita no *Reuse Methodology Manual* (Keating e Bricaud), que não é uma norma IEEE e não equivale ao SOLID da programação orientada a objetos. Cada regra abaixo se traduz em um critério verificável em revisão:
+O projeto segue a prática de *Design for Reuse* descrita no *Reuse Methodology Manual* (Keating e Bricaud). Cada regra abaixo se traduz em um critério verificável em revisão:
 
 | # | Regra | Critério de revisão |
 | :--- | :--- | :--- |

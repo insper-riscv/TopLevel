@@ -110,7 +110,7 @@ end entity mux_2x1;
 
 ## 4. Design for Reuse and Zero Duplication
 
-The project follows the *Design for Reuse* practice described in the *Reuse Methodology Manual* (Keating and Bricaud), which is not an IEEE standard and is not equivalent to the SOLID principles of object-oriented programming. Each rule below translates into a criterion that can be checked in review:
+The project follows the *Design for Reuse* practice described in the *Reuse Methodology Manual* (Keating and Bricaud). Each rule below translates into a criterion that can be checked in review:
 
 | # | Rule | Review criterion |
 | :--- | :--- | :--- |
