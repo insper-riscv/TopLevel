@@ -53,6 +53,7 @@ sim:
     - ../Core/I/misaligned_unit.vhd
     - ../Core/common/control_unit.vhd
     - ../Core/common/bubble_mux.vhd
+    - ../Core/common/forwarding_match.vhd
     - ../Core/common/forwarding_unit.vhd
     - ../Core/common/hazard_detection_unit.vhd
     - ../Core/M/m_decode.vhd
