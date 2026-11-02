@@ -16,7 +16,7 @@ UART_VHDL := ../Peripherals/UART/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd \
 
 # The simulation top (rv32i3stage_core_sim_test) with the core and the simulation
 # memories/peripherals: Core, Common-Components, Memory and Peripherals are cloned next to this repository.
-SIM_VHDL := $(shell find ../Common-Components/src ../Core/common ../Core/I ../Core/M ../Core/Zicsr ../Core/Zicntr ../Core/Zifencei ../Core/core ../Memory/sim -name '*.vhd' | sort) \
+SIM_VHDL := $(shell find ../Common-Components/src ../Core/src ../Memory/sim -name '*.vhd' -not -path '../Core/src/common/*' | sort) \
             $(UART_VHDL) $(P)/rtl/clk_gen_3way.vhd $(P)/rtl/rv32i3stage_core_sim_test.vhd
 
 # The SDRAM platform's simulation top adds the SDRAM (bridge, controller, chip model) of Memory.
